@@ -18,7 +18,16 @@ grounding, retention, connections, and doc-ingestion are the P2–P5 roadmap.
 > real purpose became clear — see [PRD](docs/PRD.md) and ADR-008. The engine
 > survives as one component.
 
-**Docs:** [PRD](docs/PRD.md) (what & why) · [Design](docs/DESIGN.md) (how) ·
+**Status (2026-06-10):** P1 engine + P2 (decompose / goal trees / goal-aware
+draw) are **code-complete and tested (42 tests), pushed — but nothing is
+deployed.** Not yet usable until you register it with Claude Code (see
+[Use from Claude Code](#use-from-claude-code-laptop-stdio)); **phone access does
+not exist yet** (designed, not built). See [Architecture §6](docs/ARCHITECTURE.md)
+for exactly what runs today.
+
+**Docs:** [PRD](docs/PRD.md) (what & why) · [Architecture](docs/ARCHITECTURE.md)
+(how it runs / what's live) · [Design](docs/DESIGN.md) (how each part works) ·
+[Portability](docs/PORTABILITY.md) (learn anywhere) ·
 [Decision log](docs/DECISIONS.md) (why these choices — argue with this one)
 
 ## Layout in the vault
