@@ -104,3 +104,40 @@ def test_health_flags_overdue_and_stale(stack):
     assert [x["title"] for x in h["overdue"]] == ["overdue"]
     assert [x["title"] for x in h["stale"]] == ["pushed around"]
     assert h["active"] == 2
+
+
+# ---- regression tests for the 2026-06-10 review fixes ----
+
+@pytest.mark.parametrize("bad_id", ["../../etc/passwd", "../escape", "a/b", "Foo Bar", "", ".."])
+def test_path_traversal_rejected(stack, bad_id):
+    # crafted ids must never resolve outside the pool dirs (critical finding #1)
+    with pytest.raises(FileNotFoundError):
+        stack._path(bad_id)
+
+
+def test_traversal_cannot_delete_outside_file(stack, tmp_path):
+    victim = tmp_path / "victim.md"
+    victim.write_text("important", encoding="utf-8")
+    with pytest.raises(FileNotFoundError):
+        stack.complete("../../victim")
+    assert victim.exists()  # untouched
+
+
+def test_double_complete_preserves_record(stack):
+    t = stack.capture("finish once")
+    stack.complete(t["id"], now=NOW)
+    again = stack.complete(t["id"], now=NOW)  # must not self-destruct (#2)
+    assert again["pool"] == "done"
+    assert (stack.root / "done" / f"{t['id']}.md").exists()
+
+
+def test_malformed_date_does_not_poison_pool(stack):
+    good = stack.capture("good task")
+    bad = stack.capture("bad date task")
+    # simulate a hand-edited bad due date on the phone
+    p = stack._path(bad["id"])
+    p.write_text(p.read_text().replace("---\n", "---\ndue: next friday\n", 1), encoding="utf-8")
+    # pop/list/health must still work for the rest of the pool (#3)
+    assert stack.pop(now=NOW, rng=random.Random(1))["id"] in {good["id"], bad["id"]}
+    assert len(stack.list_pool("active", NOW)) == 2
+    assert stack.health(NOW)["active"] == 2
