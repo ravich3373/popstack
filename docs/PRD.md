@@ -143,7 +143,7 @@ The *how* for each is in [DESIGN.md](DESIGN.md).
 | FR-4 | Refuse to park a subtask without a specific **if-then** next action; record it on the subtask | ✅ (park; tighten to if-then) |
 | FR-5 | Ground a subtask: search **all** vaults (`kb`/`coding`/`formalisms`) and Zotero, returning a brief | ⚙️ single-vault search built; multi-vault 🔜 P2 |
 | FR-6 | Generate Anki cards from understood material; report due counts; **never** host reviews (Anki's apps do) | ✅ card creation; drill flow 🔜 P3 |
-| FR-7 | Surface cross-note/cross-vault **connections** for the current material | 🔜 P4 |
+| FR-7 | **Maintain the cross-tool link graph itself** (Obsidian↔Zotero↔Anki) — create the wikilinks, the note↔paper links, and the card↔note↔paper triangle. The user never hand-wires a link (ADR-015) | 🔜 P4 |
 | FR-8 | Create new KB notes that match existing conventions (frontmatter, wikilinks, MOC placement, callouts) | 🔜 P3 |
 | FR-9 | Ingest an authored doc into atomic KB notes + a MOC + recall cards | 🔜 P5 |
 | FR-10 | A generative recall drill: ask first, reveal after (retrieval, not restudy); misses → cards | 🔜 P3 |
@@ -159,7 +159,9 @@ The *how* for each is in [DESIGN.md](DESIGN.md).
 - **NFR-2 · Ownership.** All state — goals, subtasks, notes, cards — lives in
   tools the user already trusts (markdown in the vault; cards in Anki).
   Uninstalling popstack loses nothing.
-- **NFR-3 · Reach.** Capture, draw, and review usable from laptop and phone.
+- **NFR-3 · Reach (learn anywhere).** Recall works **offline** anywhere (Anki);
+  the agent is reachable **privately** from anywhere with internet (tailnet), no
+  public endpoint. See [PORTABILITY.md](PORTABILITY.md) / ADR-014.
 - **NFR-4 · Graceful degradation.** Zotero/Anki absent must never block the
   core loop; errors explain the fix.
 - **NFR-5 · Safety when remote.** The endpoint rejects unauthenticated

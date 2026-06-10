@@ -253,3 +253,59 @@ starts a parallel one (NFR-1).
 
 **Consequences.** The KB stays coherent and searchable. Cost: the agent must
 *learn* the conventions per vault/area (a grounding step), not assume one style.
+
+---
+
+## ADR-014 — Portability: offline-first recall, tailnet-private agent
+**Status:** accepted · 2026-06-10 · narrows ADR-007 for personal access · see [PORTABILITY.md](PORTABILITY.md)
+
+**Context.** "Learn anywhere — bed, toilet, car" is two needs: high-frequency
+**recall** (must work offline) and lower-frequency **agent interaction** (needs
+the LLM + node, online). Conflating them makes the design impossible; splitting
+them makes it easy.
+
+**Decision.** Three tiers: (1) **Recall = Anki apps + AnkiWeb sync** — offline,
+anywhere, the daily driver; popstack only *creates* cards on the node and
+triggers a sync. (2) **Glance/capture = Obsidian mobile** over vault sync,
+offline-deferred. (3) **Agent = a thin PWA served by the node, reached over the
+**tailnet** (Tailscale, WireGuard) — private, works from anywhere with internet,
+**no public endpoint**. Funnel + OAuth (ADR-007) is demoted to the *optional*
+claude.ai-cloud route, not the path for personal access.
+
+**Consequences.** The most-portable activity (recall) never depends on the node
+or connectivity. Personal access needs no public exposure — this also erases
+risk R-1 for the normal case. Cost: a (thin) PWA is real UI work; its
+deterministic half needs no LLM and is buildable first, the generative half
+follows.
+
+---
+
+## ADR-015 — The agent maintains the cross-tool link graph (Obsidian ↔ Zotero ↔ Anki); the user never hand-wires links
+**Status:** accepted · 2026-06-10
+
+**Context.** Creating links by hand is the friction that kills knowledge graphs
+— the user explicitly does not want to do it. Value comes from the *triangle*:
+a concept's Obsidian note, its source paper in Zotero, and its Anki cards, all
+mutually navigable. Today none of that is automatic.
+
+**Decision.** Linking is the agent's/code's job, using each tool's stable
+identifiers, written into durable fields:
+- **Obsidian → Obsidian:** `[[wikilinks]]` in note bodies + a `related:`
+  frontmatter list — the agent proposes and writes them (the Connector, FR-7).
+- **Obsidian → Zotero:** store the Zotero item key in note frontmatter
+  (`zotero_key`) and link via `zotero://select/library/items/<KEY>` (and the
+  DOI when present).
+- **Obsidian → Anki:** after creating cards, write their note IDs back into the
+  source note's frontmatter (`anki_notes: [...]`).
+- **Anki → Obsidian/Zotero:** every generated card carries a **Source** field
+  with an `obsidian://open?vault=…&file=…` URI and the `zotero://`/DOI link, plus
+  a tag naming the source note — so a card under review links home.
+The agent maintains this triangle whenever it grounds a subtask, writes a note,
+or makes a card; links are proposed for approval before write (ADR-013).
+
+**Consequences.** Every vertex (card, note, paper) reaches the others; the graph
+grows as a byproduct of learning, not a chore. The note IDs / item keys are the
+durable join keys, robust to renames. Cost: a small "link store" the agent keeps
+consistent; broken links if an item is deleted in one tool (acceptable, detect
+on the weekly review). Requires the Better-BibTeX citekey or item key from
+Zotero (item key from the local API suffices; citekeys optional).
