@@ -1,193 +1,232 @@
-# PRD — popstack
+# PRD — popstack (a personal learning agent)
 
-> **What a PRD is for:** it pins down the *problem, the users, what the
-> product must do, and how we'll know it works* — in language anyone can
-> follow without having been in the room. It deliberately avoids *how*:
-> mechanisms and architecture live in [DESIGN.md](DESIGN.md); the reasoning
-> behind contested choices lives in [DECISIONS.md](DECISIONS.md).
+> **What a PRD is for:** it pins down the *problem, the user, what the product
+> must do, and how we'll know it works*, in language anyone can follow without
+> having been in the room. Mechanisms live in [DESIGN.md](DESIGN.md);
+> contested choices in [DECISIONS.md](DECISIONS.md).
 >
-> Two rules this document follows (the v1.0 draft broke both):
-> **(1) write for a reader with zero context** — every invented word is
-> defined before it is used; **(2) state outcomes, not mechanisms** — "the
-> system hands you one task" is a requirement; "weighted-random sampling"
-> is a design choice and stays out of this file.
+> Rules this doc follows: **(1) write for zero context** — define every
+> invented word before using it; **(2) state outcomes, not mechanisms**;
+> **(3) every goal is falsifiable** — if it can't be measured, it's a slogan.
 
-- **Status:** v1.1 · **Owner:** @ravich3373 · **Last updated:** 2026-06-10
+- **Status:** v2.0 — **scope pivot**. v1 was a generic random task stack; this
+  rewrites the product around its real purpose: helping the user deeply
+  understand and *retain* technical material. The v1 task engine survives as
+  one component (execution). · **Owner:** @ravich3373 · **Updated:** 2026-06-10
 
 ## 1. The problem
 
-Tasks arrive everywhere — at the work laptop, on the phone, mid-conversation
-— and get parked in heads, chat threads, and scattered notes. Two specific
-failures follow:
+The user is a software/ML engineer who learns by going deep: understanding the
+math, experiments, and results of ML and CS papers (compilers, distributed
+systems, databases); understanding real codebases; learning languages;
+practicing algorithms and system design. The evidence of this is already on
+disk — **~4,358 notes** across three Obsidian vaults (`kb`, `coding`,
+`formalisms`) and **~844 items in Zotero**.
 
-1. **Captured badly.** A task that isn't written down somewhere trusted
-   keeps nagging at you (it occupies working memory). A task written
-   somewhere you never look again is simply lost.
-2. **Chosen badly.** When you sit down to work, you face a long list of
-   similar-looking items and must *decide* what to do first. That decision
-   is itself work, and under a big backlog it reliably turns into stalling:
-   re-reading the list, picking something easy, or escaping to something
-   else entirely.
+Three failures sit on top of that effort:
 
-Plenty of tools solve pieces of this — to-do apps, timers, random pickers,
-reference managers. None of them connect the pieces: save a task from
-anywhere, get handed one thing to do, see what you already know that's
-relevant to it, work it for a bounded slice of time, and put it back with
-enough notes that future-you resumes warm instead of cold. popstack is that
-connection, built around tools already in daily use (Obsidian, Zotero, Anki,
-Claude).
+1. **No decomposition.** Faced with "understand and replicate this paper," the
+   hard part is turning it into a concrete plan — what to understand first,
+   what depends on what, what "done" means. Today that planning is ad hoc and
+   often skipped, so big sources stall.
+2. **No retention.** This is the costly one. Across 4,358 notes there is **zero
+   spaced repetition** — Anki isn't even installed. Knowledge is *captured and
+   re-read* (the `_Weekly Review.md` Dataview notes) but not *drilled*, so it
+   decays. Re-reading feels like learning and mostly isn't.
+3. **No connection.** The three vaults are complementary — `coding` is *how*,
+   `formalisms` is *why*, `kb` is *systems/practice* — and densely wikilinked
+   internally, but cross-vault links (a paper's math ↔ the `formalisms`
+   theorem that grounds it ↔ the `coding` implementation) are made by hand, if
+   at all. The connective tissue that turns notes into understanding is missing.
+
+popstack closes the loop: **decompose a source into an editable plan → drive
+the user through it → ground each step in what they already know → make it
+stick (Anki + connections) → fold newly-authored docs back into the KB.**
 
 ## 2. Words this document uses
 
-popstack borrows programming words and bends some of them. Defined once,
-here; used freely afterwards.
-
 | Word | Meaning here |
 |---|---|
-| **task** | one thing to do, stored as one plain-text (markdown) file |
-| **the stack** | all your tasks together. Despite the name, *not* a strict last-in-first-out stack — see **pop** |
-| **active pool** | the small set of tasks (at most ~20) currently eligible to be handed to you |
-| **reservoir** | every other task — someday-items and overflow. Moving tasks between reservoir and active pool is a deliberate act |
-| **pop** | "hand me one task." The system picks exactly one task from the active pool and presents it. Popping does **not** delete the task; a task leaves the stack only when completed. (Yes, this stretches the programming word — see open question Q5) |
-| **park** | put the task you were handed back, after working on it, with a written one-line next step |
-| **grounding** | gathering what you already know about a task — your own notes and saved papers — and presenting it alongside the task |
-| **timebox** | a fixed-length work interval (e.g. 30 minutes), after which you stop and either complete or park |
-| **recall drill** | the system quizzes you on something from your notes or papers; what you get wrong becomes a flashcard |
+| **source** | the thing to learn: a paper, a codebase, a language, an algorithm family, a system-design topic |
+| **goal** | a learning objective over one source, e.g. *"understand & replicate the π₀ paper"* or *"understand the llama.cpp inference path"* |
+| **subgoal** | a major part of a goal, e.g. *"understand the math,"* *"reproduce the main experiment,"* *"map the architecture"* |
+| **subtask** | one concrete, sittable unit of work under a subgoal, e.g. *"re-derive the flow-matching loss"* — the leaves the user actually does |
+| **plan** | the goal → subgoal → subtask tree the agent proposes and the user **edits** (dependencies allowed) |
+| **the pool** | the small set of subtasks currently in play (active), drawn from across the user's goals |
+| **draw** (was "pop") | "what should I work on now" — the agent proposes one subtask, biased to *continue the current thread*, never a blind random jump (see [DECISIONS](DECISIONS.md) ADR-009) |
+| **ground** | gather what the user already knows about a subtask — relevant notes across `kb`/`coding`/`formalisms` and papers in Zotero — and present it as a brief |
+| **connection** | a non-obvious link the agent surfaces between the current material and an existing note (often cross-vault) |
+| **recall card** | an Anki flashcard generated from something just understood; reviewed in Anki's own apps |
+| **ingest** | turn a large doc the user authored (e.g. the `ravi_docs` architecture KBs) into atomic KB notes + a MOC + recall cards, in their existing conventions |
+| **park** | set a subtask aside *with a written next action* (an if-then plan), so resuming starts warm |
 
-## 3. Who it's for, on what devices
+## 3. Who it's for, on what
 
-One user (a software/ML engineer) across three device classes:
+One user; the ecosystem is already in place:
 
-- **Laptop** — deep work; Claude Code is already open all day.
-- **Phone** — capturing tasks and light interaction (via the Claude app and
-  Obsidian mobile).
-- **An always-on machine** — runs the popstack server and holds the Obsidian
-  vault, Zotero library, and Anki collection.
+- **Obsidian vaults** — `kb` (systems/ML/DSA, 1,938 notes), `coding` (interview
+  prep, language primers, codebase deep-dives, 1,706), `formalisms` (math/ML
+  theory, proof-heavy, 714). Conventions: YAML frontmatter, **wikilinks as
+  primary navigation**, MOC/index notes, atomic-note + callout style. The agent
+  must **fit these conventions, not impose new ones** (NFR-1).
+- **Zotero** — ~844 items, ML/systems/theory-heavy; the source library.
+- **Anki** — *not installed yet*; the retention layer to stand up (P3).
+- **Devices** — laptop (deep work, Claude Code); phone (capture, light review,
+  Anki); an always-on node hosting the agent.
+- **Languages in play** — Python, C++, Go, Rust, Bazel, TypeScript.
 
-Hard constraint: Obsidian (notes), Zotero (papers), and Anki (flashcards)
-are already in use and must be **embraced, not replaced**.
+## 4. The product, in one learning project
 
-## 4. How it works — one day with popstack
+You drop the π₀ robotics paper (already in Zotero) on the agent: *"I want to
+understand and replicate this."*
 
-Morning, phone: Obsidian shows a generated **Today** note — the three tasks
-most likely to be handed out next, anything overdue, anything gone stale.
+It **decomposes** into a plan — *understand the math (flow matching, the
+action head) · understand the architecture · reproduce the main experiment ·
+replicate a minimal version* — each with subtasks. You **edit** it: you
+already know diffusion policies, so you delete that subgoal and add *"compare
+to diffusion-policy baselines."*
 
-At the desk you tell Claude **"pop."** It hands you exactly one task — say
-*Read the FSRS scheduler paper* — together with a short brief: the two vault
-notes that mention spaced repetition, and the related papers already in
-Zotero. You read no list and made no decision.
+You say **"what now."** It **draws** the first math subtask and **grounds** it:
+it surfaces your `formalisms` notes on ODEs/optimal transport, the
+diffusion-policy paper in Zotero, and flags a **connection** — *"this loss is
+the continuous-time limit of the DDPM objective in your
+`formalisms/quantization` notes."* You work a focused block.
 
-You work it for a 30-minute timebox. Not finished — so you **park** it. The
-system refuses until you give a one-line next step (*"summarize §2 into the
-vault note"*). The task goes back carrying that note, and won't be offered
-again for a few hours.
+You understood the flow-matching derivation, so the agent proposes two **recall
+cards** ("Why is flow matching simulation-free at training time?") into Anki.
+You **park** the next subtask with an if-then next action: *"when I next sit
+down → implement the sampler and check it against Figure 3."*
 
-On the train you say **"capture: review Bazel remote-cache settings, due
-Friday."** It's saved before the screen locks, as a markdown file in your
-own vault.
+Weeks later you've written a full architecture doc on the replication. You say
+**"ingest this"** — it splits the doc into atomic notes that match your vault
+style, builds a MOC, wikilinks them into your existing graph, and generates
+recall cards from the key facts.
 
-Evening, ten free minutes: **"drill me."** It pulls a random note from your
-vault, asks three questions, and the one you miss becomes an Anki flashcard
-your phone will resurface next week.
-
-The loop, in one line:
-
-> **save from anywhere → be handed one task → see what you know → work a
-> timebox → done, or back-with-a-plan**
+The loop: **decompose → edit → draw-and-ground → understand → retain → connect
+→ (ingest) — without ever facing a blank page or relearning what you forgot.**
 
 ## 5. Goals
 
-| # | The outcome we want | How we'd know it's working |
-|---|---------------------|----------------------------|
-| G1 | Saving a task takes seconds and one step, from any device — fast enough that nothing stays "in your head because writing it down is effort" | capture feels reflexive; tasks stop living in chat threads and heads |
-| G2 | Starting work requires **no choosing**: ask, and exactly one task is handed to you. Tasks nearer their deadline, higher in priority, or neglected for a long time must come up more often — but nothing in the active pool may be buried forever | handed tasks are usually accepted rather than re-rolled; deadlines stop being missed; old tasks resurface on their own |
-| G3 | Every handed task arrives with what you already know about it (your notes, your saved papers), so work starts from your knowledge instead of a blank page | the brief is read and used on most pops |
-| G4 | A task can only be put back with a concrete next step attached, so parked work stops nagging and resuming starts warm | no "where was I?" archaeology when a task comes back |
-| G5 | What you learn compounds: anything you fail to recall becomes a flashcard that your phone resurfaces on a spaced schedule | misses become cards; cards actually get reviewed |
-| G6 | The data stays yours: every task is a plain markdown file in your own vault | deleting popstack loses nothing; no proprietary storage anywhere |
+| # | Outcome we want | How we'd know it's working |
+|---|-----------------|----------------------------|
+| G1 | Turn a source into an editable plan in minutes, not an afternoon | sources get *started* instead of stalling; plans are kept and edited, not discarded |
+| G2 | Be driven through a goal constructively — handed the next sensible step (biased to continue the current thread), with a written next action when set aside — instead of choosing from scratch or forced-randomly switching | started subgoals reach "understood"; low abandonment of in-progress goals |
+| G3 | Start each step from what you already know: relevant notes + papers surfaced as a brief, and **new notes written in your existing conventions** | the brief is used; the KB grows without a second, divergent style |
+| G4 | What you understand becomes durable: it turns into spaced-repetition cards you actually review | retention measured by Anki (cards created *and* matured), where today it is **zero** |
+| G5 | Surface non-obvious connections across your vaults, so knowledge compounds into a graph rather than piling up | cross-vault links created per goal; you discover links you wouldn't have made |
+| G6 | Fold the large docs you author back into the KB as atomic notes + cards | authored docs stop being write-only artifacts |
+| G7 | You own everything and can extend it: notes/cards live in tools you already trust; new sources and tools can be added | uninstalling loses nothing; adding a new source type or tool doesn't require a rewrite |
 
-**Non-goals (v1):** teams or any second user; replacing Anki's review
-experience; building a custom mobile app (reconsidered only in P3, after
-real usage); calendar scheduling; generating tasks automatically.
+**The bet (falsifiable):** *Decomposition + grounding + forced retention makes
+the user understand hard sources more completely and remember them far longer
+than capture-and-reread does — without adding so much friction that capture or
+study stops.*
+
+**Falsifier / kill-criterion (set the baseline now):** after 8 weeks of real
+use, if (a) Anki retention isn't materially above "nothing" for material
+learned through popstack, **and** (b) goals started in popstack don't reach
+"understood" more than the user's pre-popstack baseline, **or** (c) the user
+re-rolls/overrides the proposed next step >40% of the time (it's not proposing
+useful work) — narrow hard or retire it.
 
 ## 6. What the system must do
 
-Requirements say *what*, in user-visible terms. The *how* for each is in
-[DESIGN.md](DESIGN.md) (linked per row).
+The *how* for each is in [DESIGN.md](DESIGN.md).
 
-### Functional requirements
+### Functional
 
 | ID | The system must… | Status · design |
 |----|------------------|-----------------|
-| FR-1 | Save a task with a title and optional notes, tags, due date, priority, and time estimate | ✅ · [§2](DESIGN.md#2-data-model) |
-| FR-2 | Keep the active pool small (default cap 20). Tasks beyond the cap land in the reservoir; moving between pool and reservoir is an explicit action | ✅ · [§2](DESIGN.md#2-data-model) |
-| FR-3 | On request, hand over exactly **one** active task. A closer deadline, higher priority, and longer neglect must each raise a task's chance of being handed out. A just-parked task must not reappear for a few hours (default 4). The user may always decline and ask again | ✅ · [§3](DESIGN.md#3-pop-algorithm) |
-| FR-4 | Refuse to park a task unless a specific next step is written; record that step, and the park history, on the task itself | ✅ · [§2](DESIGN.md#2-data-model) |
-| FR-5 | Mark a task complete (optional note) and keep completed tasks as browsable history | ✅ |
-| FR-6 | For any task, collect what the vault and the paper library already contain about it, for use as a brief | ✅ · [§4](DESIGN.md#4-component-map) |
-| FR-7 | Search the paper library; save a new paper given just its DOI | ✅ |
-| FR-8 | Create flashcards; report how many are due. If Anki is absent, explain how to set it up instead of failing | ✅ |
-| FR-9 | Report stack health: pool counts, overdue tasks, and stale tasks (parked 3+ times, or older than 30 days) | ✅ |
-| FR-10 | Generate a daily **Today** note in the vault: likely next tasks, overdue, stale, flashcards due | ✅ |
-| FR-11 | Run recall drills over notes and papers, and turn misses into flashcards | 🔜 P2 |
-| FR-12 | Do the routine things on a schedule, unprompted (morning Today note; weekly health review) | 🔜 P1 |
+| FR-1 | Decompose a source (paper/codebase/topic) into a goal → subgoal → subtask **plan**, and let the user edit it (add/remove/reorder/mark dependencies) | 🔜 P2 |
+| FR-2 | Track goals and their trees; show progress (subtasks done / understood per subgoal) | 🔜 P2 |
+| FR-3 | Hand over the next sensible subtask on request — biased to continue the current goal/thread or an unblocked dependency, **not** a blind random jump across unrelated goals; the user may decline | ⚙️ engine built (draw); bias logic 🔜 P2 |
+| FR-4 | Refuse to park a subtask without a specific **if-then** next action; record it on the subtask | ✅ (park; tighten to if-then) |
+| FR-5 | Ground a subtask: search **all** vaults (`kb`/`coding`/`formalisms`) and Zotero, returning a brief | ⚙️ single-vault search built; multi-vault 🔜 P2 |
+| FR-6 | Generate Anki cards from understood material; report due counts; **never** host reviews (Anki's apps do) | ✅ card creation; drill flow 🔜 P3 |
+| FR-7 | Surface cross-note/cross-vault **connections** for the current material | 🔜 P4 |
+| FR-8 | Create new KB notes that match existing conventions (frontmatter, wikilinks, MOC placement, callouts) | 🔜 P3 |
+| FR-9 | Ingest an authored doc into atomic KB notes + a MOC + recall cards | 🔜 P5 |
+| FR-10 | A generative recall drill: ask first, reveal after (retrieval, not restudy); misses → cards | 🔜 P3 |
+| FR-11 | Daily glanceable view (active subtasks, what's due in Anki, stale goals) | ✅ (Today.md) |
+| FR-12 | Be extensible: add a new source type or external tool without reworking the core | design constraint |
 
-### Non-functional requirements
+### Non-functional
 
-- **NFR-1 · Ownership.** All task state is human-readable markdown inside
-  the user's vault. Uninstalling popstack loses nothing.
-- **NFR-2 · Reach.** Everything above must be usable from the laptop *and*
-  the phone. No popstack-specific app may be required through P2.
-- **NFR-3 · Safety when reachable from the internet.** The server must
-  reject any request that doesn't present the configured secret. Before
-  task contents become sensitive, real login (OAuth) is required, not just
-  a shared secret.
-- **NFR-4 · Graceful degradation.** Zotero or Anki being closed or missing
-  must never block the core loop, and every error must say what to fix.
-- **NFR-5 · Zero operations.** No database server, no migrations, nothing
-  to administer. All state is files; a reboot loses nothing.
+- **NFR-1 · Respect the existing KB.** New notes/cards adopt the user's
+  conventions (YAML frontmatter, wikilinks-as-navigation, MOCs, callouts,
+  numbered/Johnny-Decimal folders). The agent extends the graph; it never
+  starts a parallel, divergent one.
+- **NFR-2 · Ownership.** All state — goals, subtasks, notes, cards — lives in
+  tools the user already trusts (markdown in the vault; cards in Anki).
+  Uninstalling popstack loses nothing.
+- **NFR-3 · Reach.** Capture, draw, and review usable from laptop and phone.
+- **NFR-4 · Graceful degradation.** Zotero/Anki absent must never block the
+  core loop; errors explain the fix.
+- **NFR-5 · Safety when remote.** The endpoint rejects unauthenticated
+  requests; real login (OAuth) before exposing anything sensitive.
+- **NFR-6 · Extensibility.** Sources, grounding backends, and card/connection
+  generators are pluggable.
 
-## 7. How we'll judge it (review monthly)
+## 7. Success metrics (review monthly — outcomes, not activity)
 
-- ≥10 tasks handed out *and worked* per week (G2 alive)
-- parks-to-completes below 3:1 (G4 alive — tasks finish, not just cycle)
-- the stale list trends down, not up (FR-9 doing its job)
-- ≥5 flashcards created per week once drills land (G5 alive)
-- The qualitative one that decides everything: **is capture still
-  reflexive?** The system dies the day a task feels easier to keep in your
-  head.
+Deliberately *not* "pops/week" or streaks (those reward time-in-tool, the
+abandonment trap). Measure value:
+
+- **Retention** — Anki cards created through popstack that reach "mature," and
+  review accuracy on them. Baseline today is zero, so any durable retention is
+  signal.
+- **Goal progress** — fraction of started goals whose subgoals reach
+  "understood"; replications actually achieved.
+- **Connection density** — cross-vault links created per goal (and how often
+  the user keeps an agent-proposed connection).
+- **Friction signals (diagnostics, not targets)** — accept-on-first-draw rate
+  (≥70% = the agent proposes useful work); capture latency; deadline-hit on any
+  dated goals. High re-roll is the **falsifier**, not a vanity metric.
 
 ## 8. Risks
 
 | ID | Risk | Mitigation |
 |----|------|-----------|
-| R-1 | When exposed to the internet, anyone holding the secret token can read and write the Stack folder of the vault | secret required at minimum; keep the public endpoint off until phone use starts; OAuth before anything sensitive (NFR-3) |
-| R-2 | Tinkering with the system replaces using it (the classic productivity-tool trap) | P3 is gated on a month of real P1/P2 usage data |
-| R-3 | Two devices edit the same task file at the same moment (sync conflict) | in practice only the server writes task files; Obsidian's sync merges note bodies; accepted as last-writer-wins for metadata until observed in the wild |
-| R-4 | A handed task feels stale or irrelevant → trust in "just pop" erodes | urgency raises odds, cooldowns stop repeats, declining is always allowed; tune from health data |
-| R-5 | Abandonment — the fate of most personal productivity systems | the §7 metrics are reviewed monthly; unused features get deleted, not maintained |
+| R-1 | Public endpoint → vault read/write if the token leaks | bearer floor now; OAuth before remote sensitive use; Funnel off until needed |
+| R-2 | The agent's decomposition is generic/wrong, so plans get ignored | plans are *editable proposals*, not commitments; measure how much gets kept (FR-1) |
+| R-3 | Agent-authored notes drift from the user's style and pollute the graph | NFR-1 is load-bearing; ingest/notes go through a convention check; user approves before write |
+| R-4 | Retention layer never adopted because Anki setup friction | P3 includes the Anki install path; cards are a *byproduct* of work, not a separate chore |
+| R-5 | Meta-work trap — building/curating the system replaces learning | P4/P5 gated on P2/P3 still being used at the monthly review |
+| R-6 | Scope sprawl (it tries to be everything) | phase gating; each phase must earn the next on real usage |
 
 ## 9. Phases
 
-- **P0 — engine + server** ✅ *(this repo, 2026-06-10)*
-- **P1 — daily use:** register with Claude Code; schedule the Today note;
-  expose to the phone (with the secret); tune handing-out behavior from
-  real usage.
-- **P2 — the learning loop:** recall drills; misses → flashcards; metric
-  instrumentation.
-- **P3 — a purpose-built app** *(only if P1/P2 usage demands it):*
-  one-button pop, a visible countdown, swipe-to-park.
+- **P1 — execution engine** ✅ *(built: pools, draw, park, complete, Today.md,
+  hardened in the 2026-06-10 review).*
+- **P2 — decomposition + driving:** source → editable plan (FR-1/2);
+  resume-biased, dependency-aware draw (FR-3); multi-vault grounding (FR-5).
+- **P3 — retention:** stand up Anki; generative drills (FR-10); cards as a
+  byproduct of understood subtasks (FR-6); convention-respecting note writing
+  (FR-8).
+- **P4 — connections:** cross-vault link discovery (FR-7).
+- **P5 — ingestion:** authored doc → KB notes + MOC + cards (FR-9).
+- **P6 — extensibility & (only if earned) a purpose-built UI.**
 
-## 10. Open questions
+## 10. Non-goals (v2)
 
-1. The urgency behavior (FR-3) ships with borrowed defaults — re-tune after
-   ~50 real pops?
-2. Should a task's time estimate influence what gets handed out ("I have 15
-   minutes — give me something short")? Energy/context tags?
-3. Recall drill format: free recall, cloze deletion, or
-   explain-it-to-a-beginner?
-4. OAuth: implement ourselves or adopt a library — decide at P1 exit.
-5. **Naming:** "pop" stretches the programming word (nothing is removed,
-   and selection isn't last-in-first-out). Rename to **draw**? Touches tool
-   names and docs — decide before muscle memory sets in. *(Good first ADR
-   exercise: if yes, write ADR-008 superseding the vocabulary.)*
+Teams/multi-user; replacing Anki's review UI or Zotero's library UI; a custom
+mobile app before P6; **auto-*creating* tasks without the user** (the agent
+*proposes*, the user disposes — auto-*suggest* is core, auto-*commit* is not);
+being a general productivity/to-do app (it is a *learning* agent).
+
+## 11. Open questions
+
+1. **Name.** "popstack" described the old random-stack mechanic; the product is
+   now a learning agent. Rename? (First good ADR exercise.) "draw" already
+   replaces "pop" in the vocabulary.
+2. How much **autonomy** in "driving"? Pure proposer, or may it schedule
+   reviews / nudge on stale goals unprompted?
+3. Decomposition: one fixed template per source-type (paper/codebase/language/
+   algorithm/system-design), or fully generated each time? Probably templates +
+   editing.
+4. Recall format per domain — cloze for definitions, problem-cards for
+   algorithms (the `coding` proofs suggest derivation-cards), explain-to-a-
+   beginner for systems. Decide empirically (FR-10).
+5. Do dated **deadlines** even apply here (learning is mostly self-paced), or is
+   the weight just priority + dependency + neglect? Likely drop hard deadlines
+   for most goals.

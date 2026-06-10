@@ -11,12 +11,54 @@
 > Every tool and acronym is glossed on first use. If a section assumes
 > something unstated, treat that as a bug in the doc.
 
-- **Status:** implemented (P0) · **Last updated:** 2026-06-10
-- **Vocabulary** (pop, park, active pool, reservoir, grounding…) is defined
-  in [PRD §2](PRD.md#2-words-this-document-uses) and used here without
+- **Status:** P1 (execution engine) implemented; P2–P6 designed below ·
+  **Last updated:** 2026-06-10
+- **Vocabulary** (goal, subgoal, subtask, draw, ground, park, recall card…) is
+  defined in [PRD §2](PRD.md#2-words-this-document-uses) and used here without
   re-definition.
 
-## 1. Architecture
+## 0. v2 architecture — the learning agent
+
+> The product pivoted ([DECISIONS](DECISIONS.md) ADR-008): popstack is a
+> *learning agent*, not a generic task stack. §1–§8 below document the
+> **execution engine** that is built and still valid (it now operates on the
+> *leaves* of a goal tree). This section frames the larger v2 system the engine
+> sits inside; the new components are designed, not yet built.
+
+The loop is **decompose → drive → ground → retain → connect → ingest**, built as
+components around the existing engine:
+
+```
+ source (paper / codebase / topic / Zotero item)
+        │
+        ▼  Decomposer (LLM, template per source-type) ───────────► editable PLAN
+        │                                                          Goal
+        │                                                          ├─ Subgoal
+        │                                                          │   ├─ Subtask  ◄─┐
+        ▼                                                          │   └─ Subtask    │ markdown
+   Engine (BUILT): draw the next leaf (resume-biased, dep-aware),  └─ Subgoal        │ in vault
+   park (if-then), complete, Today.md     ADR-009/010/011          (tree, in vault) ─┘
+        │
+        ▼  Grounder: search ALL vaults (kb/coding/formalisms) + Zotero ──► brief + connections
+        │   (extends grounding.py from one vault to many; wikilink-graph aware)
+        ▼  Retainer: understood → recall cards (Anki, byproduct) + generative drills  ADR-012
+        ▼  Connector: surface cross-vault links for the current material           (P4)
+        ▼  Ingestor: authored doc → atomic notes + MOC + cards, in your conventions ADR-013 (P5)
+```
+
+Component status: **Engine** ✅ (P1) · **Decomposer / dep-aware draw /
+multi-vault Grounder** 🔜 P2 · **Retainer (Anki + drills) / convention-aware note
+writer** 🔜 P3 · **Connector** 🔜 P4 · **Ingestor** 🔜 P5. Each keeps the
+ADR-006 discipline: own the *loop/learning semantics*, delegate deep tools
+(FSRS to Anki, library to Zotero, rendering to Obsidian).
+
+Data-model change (ADR-010): tasks are now **leaves of a Goal→Subgoal→Subtask
+tree** (frontmatter carries parent/child + dependency wikilinks). The
+`active`/`reservoir` pools (§2) hold *in-play subtasks* drawn across goals; the
+engine's draw/park/complete operate unchanged on those leaves. The full tree
+data model is specified when P2 is built.
+
+## 1. Architecture (execution engine, built)
 
 The central idea: **separate where the agent runs from where you touch
 it.** One small server on an always-on machine; the user-facing "GUIs" are

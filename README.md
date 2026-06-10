@@ -1,14 +1,22 @@
 # popstack
 
-Personal task stack as an MCP server. Tasks live as markdown in your Obsidian
-vault (so every device already renders and syncs them); pops are
-**weighted-random** (deadline + priority + capped aging — stale tasks surface
-*more*, bounded); parking a task **requires a one-line next action**;
-grounding searches your vault + Zotero; recall misses become Anki cards.
+A **personal learning agent** as an MCP server. You hand it a technical source
+— an ML/CS paper, a codebase, a topic — and it decomposes it into an editable
+plan, drives you through it, grounds each step in what your Obsidian vaults +
+Zotero already know, and makes it *stick* with Anki spaced repetition and
+cross-vault connections.
 
 ```
-push → pop (weighted random) → ground → timebox → complete | park(next_action)
+source → decompose → draw next step → ground → understand → retain (Anki) → connect → ingest
 ```
+
+The execution engine (drawing the next step, parking with an if-then next
+action, completion, the daily view) is built; decomposition, multi-vault
+grounding, retention, connections, and doc-ingestion are the P2–P5 roadmap.
+
+> Was: a generic random "task stack" (v1). Pivoted to a learning agent once the
+> real purpose became clear — see [PRD](docs/PRD.md) and ADR-008. The engine
+> survives as one component.
 
 **Docs:** [PRD](docs/PRD.md) (what & why) · [Design](docs/DESIGN.md) (how) ·
 [Decision log](docs/DECISIONS.md) (why these choices — argue with this one)
