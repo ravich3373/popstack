@@ -5,12 +5,14 @@ Two transports from one process:
     popstack --http               # streamable HTTP — expose via Tailscale
                                   #   Funnel for the claude.ai connector
 
-When POPSTACK_AUTH_TOKEN is set, HTTP requests must send
-"Authorization: Bearer <token>". Funnel makes the endpoint public — always
-set the token (and prefer an unguessable PORT/path at the Funnel layer too).
+The bearer token guards header-controllable clients; the claude.ai connector
+needs OAuth (not yet implemented) — see README. `--http` refuses to start
+without a token unless you pass --insecure (which forces loopback only).
 """
 
 import argparse
+import hmac
+import sys
 
 from mcp.server.fastmcp import FastMCP
 
@@ -132,16 +134,28 @@ def anki_status() -> dict:
 
 
 class _BearerAuth:
-    """Minimal ASGI middleware: require Authorization: Bearer <AUTH_TOKEN>."""
+    """Minimal ASGI middleware: require Authorization: Bearer <AUTH_TOKEN>.
+
+    Note: a shared bearer token works for header-controllable MCP clients
+    (Claude Code's `--header`, curl, the Agent SDK), NOT for the claude.ai
+    web/mobile custom connector, which requires OAuth 2.1 (see README).
+    """
 
     def __init__(self, app, token: str):
         self.app, self.token = app, token
+        self._expected = f"Bearer {token}"
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
+            # Let CORS preflight through (it can't carry the auth header).
+            if scope.get("method") == "OPTIONS":
+                await send({"type": "http.response.start", "status": 204,
+                            "headers": [(b"content-length", b"0")]})
+                await send({"type": "http.response.body", "body": b""})
+                return
             headers = dict(scope.get("headers") or [])
             got = headers.get(b"authorization", b"").decode()
-            if got != f"Bearer {self.token}":
+            if not hmac.compare_digest(got, self._expected):
                 await send({"type": "http.response.start", "status": 401,
                             "headers": [(b"content-type", b"text/plain")]})
                 await send({"type": "http.response.body", "body": b"unauthorized"})
@@ -153,20 +167,34 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="popstack MCP server")
     parser.add_argument("--http", action="store_true",
                         help="serve streamable HTTP (default: stdio)")
+    parser.add_argument("--insecure", action="store_true",
+                        help="allow --http with no auth token (binds 127.0.0.1 only)")
     args = parser.parse_args()
 
     if not args.http:
         mcp.run()  # stdio
         return
 
-    import uvicorn
+    try:
+        import uvicorn
+    except ModuleNotFoundError:
+        sys.exit("--http needs the 'http' extra: pip install 'popstack[http]'")
 
     app = mcp.streamable_http_app()
+    host = config.HOST
     if config.AUTH_TOKEN:
         app = _BearerAuth(app, config.AUTH_TOKEN)
+    elif args.insecure:
+        # fail-safe: an unauthenticated endpoint may never leave loopback.
+        host = "127.0.0.1"
+        print("WARNING: --insecure: serving UNAUTHENTICATED on 127.0.0.1 only.")
     else:
-        print("WARNING: POPSTACK_AUTH_TOKEN not set — HTTP endpoint is unauthenticated.")
-    uvicorn.run(app, host=config.HOST, port=config.PORT)
+        sys.exit(
+            "refusing to serve --http without POPSTACK_AUTH_TOKEN.\n"
+            "Set a token (openssl rand -hex 32) or pass --insecure for "
+            "loopback-only unauthenticated use."
+        )
+    uvicorn.run(app, host=host, port=config.PORT)
 
 
 if __name__ == "__main__":

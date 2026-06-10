@@ -3,6 +3,8 @@ Settings → Advanced → "Allow other applications…" enabled). Writes (add by
 DOI) via the web API when ZOTERO_API_KEY/ZOTERO_USER_ID are configured.
 """
 
+import re
+import urllib.parse
 from typing import Any
 
 import httpx
@@ -10,6 +12,7 @@ import httpx
 from . import config
 
 _TIMEOUT = 10.0
+_DOI_RE = re.compile(r"10\.\d{4,9}/\S+")
 
 
 def _item_summary(item: dict[str, Any]) -> dict[str, Any]:
@@ -57,9 +60,14 @@ def add_by_doi(doi: str) -> dict[str, Any]:
             "error": "set ZOTERO_API_KEY and ZOTERO_USER_ID for writes "
             "(zotero.org → Settings → Security → API keys)"
         }
+    doi = doi.strip()
+    if not _DOI_RE.fullmatch(doi):
+        return {"error": f"not a valid DOI: {doi!r}"}
     try:
+        # url-encode the DOI so it can't break out of the URL path
         meta = httpx.get(
-            f"https://api.crossref.org/works/{doi}", timeout=_TIMEOUT
+            f"https://api.crossref.org/works/{urllib.parse.quote(doi, safe='')}",
+            timeout=_TIMEOUT,
         ).raise_for_status().json()["message"]
         item = {
             "itemType": "journalArticle",
