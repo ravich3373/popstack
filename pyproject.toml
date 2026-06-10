@@ -19,6 +19,7 @@ dev = ["pytest>=8.0"]
 [project.scripts]
 popstack = "popstack.server:main"
 popstack-today = "popstack.today:main"
+popstack-usage = "popstack.usage:main"
 
 [build-system]
 requires = ["hatchling"]

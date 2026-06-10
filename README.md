@@ -66,8 +66,32 @@ uv run pytest          # should be green
 claude mcp add popstack --scope user -- uv --directory ~/Documents/repos/popstack run popstack
 ```
 
-Then in any session: *"pop a task and ground it"*, *"park it — next action:
-re-derive the update rule"*, *"capture: read the FSRS paper, due Friday"*.
+Then in any session: *"decompose this paper"*, *"draw the next subtask and
+ground it"*, *"park it — next action: re-derive the update rule"*.
+
+## Token usage per task
+
+popstack can't *measure* tokens (the model consumes them; the client sees the
+counts), but it **records and attributes** them per subtask. Add a Claude Code
+**Stop hook** so each turn's real usage (from the transcript) lands on whatever
+subtask you most recently drew. In `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      { "matcher": "", "hooks": [
+        { "type": "command",
+          "command": "uv --directory ~/Documents/repos/popstack run popstack-usage --hook" }
+      ]}
+    ]
+  }
+}
+```
+
+Then ask *"usage_report"* (or call the tool) for per-task and per-goal totals.
+Tokens are also shown on each task (`tokens_in`/`tokens_out`). You can record
+manually too: `record_usage(input_tokens, output_tokens, task_id?)`.
 
 ## Use from your phone
 

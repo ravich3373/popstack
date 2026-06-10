@@ -158,6 +158,23 @@ def stack_health() -> dict:
 
 
 @mcp.tool()
+def record_usage(input_tokens: int, output_tokens: int,
+                 task_id: str | None = None, model: str | None = None) -> dict:
+    """Record token usage against a subtask (default: the in-focus one). popstack
+    cannot measure tokens itself — the LLM does — so the client supplies them.
+    Usually called automatically by a Claude Code Stop hook (see usage.py); call
+    it directly only if you have real token counts to attribute."""
+    return _stack().record_usage(input_tokens, output_tokens, task_id, model)
+
+
+@mcp.tool()
+def usage_report() -> dict:
+    """Token totals per task and per goal (and grand total), from what's been
+    recorded via record_usage / the Stop hook."""
+    return _stack().usage_report()
+
+
+@mcp.tool()
 def ground_task(task_id: str) -> dict:
     """Find what the vault and Zotero already know about a task (searches by
     its wikilinks, tags, and title terms). Compose the results into a short

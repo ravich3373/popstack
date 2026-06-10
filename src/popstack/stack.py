@@ -127,6 +127,8 @@ class Stack:
             "goal": meta.get("goal"),
             "subgoal": meta.get("subgoal"),
             "deps": meta.get("deps", []),
+            "tokens_in": int(meta.get("tokens_in", 0)),
+            "tokens_out": int(meta.get("tokens_out", 0)),
         }
         out.update(extra)
         return out
@@ -405,4 +407,75 @@ class Stack:
             "done": len(self._tasks_in("done")),
             "overdue": overdue,
             "stale": stale,
+        }
+
+    # ---------- token accounting (fed from the client; see usage.py) ----------
+
+    def current_task(self) -> str | None:
+        """The subtask currently 'in focus' = the active one most recently
+        drawn (by last_popped). Token usage with no explicit task_id is
+        attributed here."""
+        best_id, best_when = None, ""
+        for path, post in self._tasks_in("active"):
+            lp = str(post.metadata.get("last_popped") or "")
+            if lp and lp > best_when:
+                best_when, best_id = lp, path.stem
+        return best_id
+
+    def record_usage(
+        self,
+        input_tokens: int,
+        output_tokens: int,
+        task_id: str | None = None,
+        model: str | None = None,
+        now: dt.datetime | None = None,
+    ) -> dict[str, Any]:
+        """Accumulate token usage onto a subtask. The MCP server cannot measure
+        tokens (the LLM does); this records numbers the *client* supplies (e.g.
+        a Stop hook reading the transcript). With no task_id, attributes to the
+        in-focus subtask (current_task)."""
+        now = now or _now()
+        tid = task_id or self.current_task()
+        if not tid:
+            return {"error": "no active task in focus; draw one first or pass task_id"}
+        path = self._path(tid)
+        post = self._load(path)
+        m = post.metadata
+        m["tokens_in"] = int(m.get("tokens_in", 0)) + max(int(input_tokens), 0)
+        m["tokens_out"] = int(m.get("tokens_out", 0)) + max(int(output_tokens), 0)
+        m["turns"] = int(m.get("turns", 0)) + 1
+        if model:
+            m["last_model"] = model
+        self._save(path, post)
+        return self._summary(
+            path, post, recorded={"in": int(input_tokens), "out": int(output_tokens)},
+        )
+
+    def usage_report(self) -> dict[str, Any]:
+        """Token totals per task and per goal, across all pools."""
+        per_task, per_goal = [], {}
+        tin = tout = 0
+        for pool in POOLS:
+            for path, post in self._tasks_in(pool):
+                ti = int(post.metadata.get("tokens_in", 0))
+                to = int(post.metadata.get("tokens_out", 0))
+                if ti == 0 and to == 0:
+                    continue
+                goal = post.metadata.get("goal")
+                per_task.append({
+                    "id": path.stem, "title": post.metadata.get("title", path.stem),
+                    "pool": pool, "goal": goal,
+                    "tokens_in": ti, "tokens_out": to, "turns": int(post.metadata.get("turns", 0)),
+                })
+                tin += ti
+                tout += to
+                if goal:
+                    g = per_goal.setdefault(goal, {"goal": goal, "tokens_in": 0, "tokens_out": 0})
+                    g["tokens_in"] += ti
+                    g["tokens_out"] += to
+        per_task.sort(key=lambda t: -(t["tokens_in"] + t["tokens_out"]))
+        return {
+            "total": {"tokens_in": tin, "tokens_out": tout, "tokens": tin + tout},
+            "per_goal": sorted(per_goal.values(), key=lambda g: -(g["tokens_in"] + g["tokens_out"])),
+            "per_task": per_task,
         }
