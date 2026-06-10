@@ -40,17 +40,18 @@ components around the existing engine:
    park (if-then), complete, Today.md     ADR-009/010/011          (tree, in vault) ─┘
         │
         ▼  Grounder: search ALL vaults (kb/coding/formalisms) + Zotero ──► brief + connections
-        │   (extends grounding.py from one vault to many; wikilink-graph aware)
+        │   (grounding.py searches all POPSTACK_VAULTS; flags cross-vault concepts)
         ▼  Retainer: understood → recall cards (Anki, byproduct) + generative drills  ADR-012
         ▼  Connector: surface cross-vault links for the current material           (P4)
         ▼  Ingestor: authored doc → atomic notes + MOC + cards, in your conventions ADR-013 (P5)
 ```
 
-Component status: **Engine** ✅ (P1) · **Decomposer / dep-aware draw /
-multi-vault Grounder** 🔜 P2 · **Retainer (Anki + drills) / convention-aware note
-writer** 🔜 P3 · **Connector** 🔜 P4 · **Ingestor** 🔜 P5. Each keeps the
-ADR-006 discipline: own the *loop/learning semantics*, delegate deep tools
-(FSRS to Anki, library to Zotero, rendering to Obsidian).
+Component status: **Engine, Decomposer, dep-aware draw, multi-vault Grounder**
+✅ (P1–P2, code-complete + tested) · **Retainer (Anki cards/drills) /
+convention-aware note writer** 🔜 P3 · **Connector** (cross-vault link
+*candidates* land today in grounding; *writing* the links 🔜) P4 · **Ingestor**
+🔜 P5. Each keeps the ADR-006 discipline: own the *loop/learning semantics*,
+delegate deep tools (FSRS to Anki, library to Zotero, rendering to Obsidian).
 
 Data-model change (ADR-010): tasks are now **leaves of a Goal→Subgoal→Subtask
 tree** (frontmatter carries parent/child + dependency wikilinks). The
@@ -207,7 +208,7 @@ Read this next to the source; the largest file (stack.py) is ~310 lines.
 |------|----------------|-------|
 | `config.py` | all settings, from environment variables | a `.env` file sourced by the launcher; no config framework |
 | `stack.py` | the engine: capture / pop / park / complete / move / list / health | pure file manipulation + the weight function; fully unit-tested; **knows nothing about MCP** |
-| `grounding.py` | task → search terms (wikilinks first, then tags, then title words) → vault hits, merged with Zotero hits | uses `ripgrep` when installed, pure-python fallback otherwise; returns structured hits — the *model* writes the prose brief |
+| `grounding.py` | task → search terms (wikilinks first, then tags, then title words) → hits across **all configured vaults** (`POPSTACK_VAULTS`), each tagged with its vault, merged with Zotero; flags concepts hitting 2+ vaults as **cross-vault connection candidates** (FR-7 substrate) | `ripgrep --json` when installed, pure-python fallback; returns structured hits — the *model* writes the prose brief |
 | `zotero.py` | paper library client | reads via Zotero's local HTTP API; writes (add-by-DOI) via the zotero.org web API using Crossref metadata |
 | `anki.py` | flashcard client (AnkiConnect, the standard Anki automation add-on) | absent Anki ⇒ `{available: false, error: how-to-fix}`, never an exception |
 | `server.py` | exposes 13 tools over MCP; both transports; bearer-auth middleware | tool docstrings are the model's usage manual — write them as instructions |

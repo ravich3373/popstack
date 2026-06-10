@@ -17,6 +17,22 @@ def _env_path(name: str, default: str) -> Path:
 VAULT_PATH: Path = _env_path("POPSTACK_VAULT", "~/Documents/kb")
 STACK_DIRNAME: str = os.environ.get("POPSTACK_DIR", "Stack")
 
+
+def _env_paths(name: str, default: list[Path]) -> list[Path]:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    return [Path(p.strip()).expanduser() for p in raw.split(",") if p.strip()]
+
+
+# Knowledge vaults grounding searches (the user has several complementary
+# vaults: kb / coding / formalisms). Set POPSTACK_VAULTS as a comma-separated
+# list; the Stack vault is always included. Grounding labels each hit with the
+# vault it came from, which is what makes cross-vault connections possible.
+VAULTS: list[Path] = _env_paths("POPSTACK_VAULTS", [VAULT_PATH])
+if VAULT_PATH not in VAULTS:
+    VAULTS = [VAULT_PATH, *VAULTS]
+
 # Active-pool cap. Pops draw only from active; overflow lands in the
 # reservoir. Small on purpose — see the choice-overload moderators.
 ACTIVE_LIMIT: int = int(os.environ.get("POPSTACK_ACTIVE_LIMIT", "20"))

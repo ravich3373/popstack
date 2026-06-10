@@ -31,12 +31,29 @@ def test_vault_search_handles_colon_in_path(tmp_path, monkeypatch):
     vault = tmp_path / "My: Vault"
     (vault / "notes").mkdir(parents=True)
     (vault / "notes" / "a.md").write_text("the quick brown fox\n", encoding="utf-8")
-    monkeypatch.setattr(grounding.config, "VAULT_PATH", vault)
+    monkeypatch.setattr(grounding.config, "VAULTS", [vault])
 
     hits = grounding.vault_search("brown", limit=5)
-    assert any("a.md" in h["file"] and h["line"] == 1 for h in hits)
+    assert any("a.md" in h["file"] and h["line"] == 1 and h["vault"] == "My: Vault" for h in hits)
 
 
 def test_vault_search_empty_when_vault_missing(tmp_path, monkeypatch):
-    monkeypatch.setattr(grounding.config, "VAULT_PATH", tmp_path / "nope")
+    monkeypatch.setattr(grounding.config, "VAULTS", [tmp_path / "nope"])
     assert grounding.vault_search("anything") == []
+
+
+def test_grounding_spans_vaults_and_flags_cross_vault(tmp_path, monkeypatch):
+    # a concept living in two vaults is a cross-vault connection candidate
+    theory = tmp_path / "formalisms"
+    code = tmp_path / "coding"
+    theory.mkdir(); code.mkdir()
+    (theory / "flow.md").write_text("flow matching is the continuous limit\n", encoding="utf-8")
+    (code / "sampler.md").write_text("flow matching sampler implementation\n", encoding="utf-8")
+    monkeypatch.setattr(grounding.config, "VAULTS", [theory, code])
+    monkeypatch.setattr(grounding.zotero, "search", lambda *a, **k: {"items": []})
+
+    res = grounding.ground({"id": "t1", "title": "understand flow matching", "body": "", "tags": []})
+    vaults_hit = {n["vault"] for n in res["vault_notes"]}
+    assert {"formalisms", "coding"} <= vaults_hit
+    assert any(c["term"] == "matching" and set(c["vaults"]) == {"coding", "formalisms"}
+               for c in res["cross_vault_connections"])

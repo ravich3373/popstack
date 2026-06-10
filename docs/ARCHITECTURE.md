@@ -85,6 +85,21 @@ Two ways popstack is reached, by transport:
   (private, no public exposure, ADR-014); a public Funnel + OAuth is only needed
   for the claude.ai cloud connector.
 
+## 3b. Do I configure this on every device? (No.)
+
+A common confusion: `claude mcp add` is **not** a per-device step. There are two
+distinct connection mechanisms, and you use each once:
+
+| Mechanism | Configures | Scope | You do it… |
+|-----------|-----------|-------|-----------|
+| `claude mcp add` | the **Claude Code CLI** on one machine | per-machine that runs Claude Code | on your **laptop, once** |
+| **claude.ai custom connector** | your **claude.ai account** | every device you're signed into | on your **account, once** (when the node is live) |
+
+So: one `claude mcp add` on the laptop today; later, one connector setup pointing
+at your node (over Tailscale) that your phone, web, and desktop all inherit. The
+phone never runs `claude mcp add` — there is no Claude Code on it. Configuration
+is per-machine-running-Claude-Code or per-account, **never per-device-you-use.**
+
 ## 4. Wire protocols (who speaks what)
 
 | From → To | Protocol | Notes |
@@ -121,7 +136,7 @@ phone: AnkiDroid ← sync ← AnkiWeb → you review, offline, in bed
 |-----------|-------|-----------------|
 | P2 engine (decompose, draw, goals) | ✅ **code + tests on GitHub** | — |
 | Use it on the **laptop** | ⚠️ **not until you run one command** | `claude mcp add popstack --scope user -- uv --directory ~/Documents/repos/popstack run popstack`, then talk to it in a Claude Code session |
-| Grounding across all 3 vaults | ❌ single-vault code only | extend `grounding.py` (P2-remaining) |
+| Grounding across all 3 vaults + cross-vault connections | ✅ **code + tests** | set `POPSTACK_VAULTS` to your vaults |
 | Retention / Anki on phone | ❌ Anki not installed | install Anki + AnkiConnect on a node; set up AnkiDroid + AnkiWeb (P3) |
 | **Agent on the phone** | ❌ **does not exist** | stand up the always-on node + tailnet HTTP serving + a phone Claude surface (PWA+Agent SDK, or claude.ai connector once OAuth) — this is the biggest remaining build |
 | Anything running as a service | ❌ **nothing is deployed** | popstack only runs when a client launches it (stdio) or you run `--http` |

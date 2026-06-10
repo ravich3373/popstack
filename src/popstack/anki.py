@@ -46,8 +46,13 @@ def status(timeout: float = _TIMEOUT, include_decks: bool = True) -> dict[str, A
         return {"available": False, "error": f"{_UNAVAILABLE} ({e})"}
 
 
-def add_cards(cards: list[dict[str, str]], deck: str | None = None) -> dict[str, Any]:
-    """cards: [{"front": ..., "back": ...}, ...] — Basic notes, duplicate-safe."""
+def add_cards(
+    cards: list[dict[str, str]], deck: str | None = None, sync: bool = True
+) -> dict[str, Any]:
+    """cards: [{"front":.., "back":.., "source":..(optional)}, ...] — Basic notes,
+    duplicate-safe. The optional `source` field carries the obsidian://+zotero://
+    backlinks (ADR-015) so a card under review links home. With sync=True, pushes
+    to AnkiWeb after adding so the cards reach your phone (the portability path)."""
     deck = deck or config.ANKI_DEFAULT_DECK
     try:
         if deck not in _call("deckNames"):
@@ -56,7 +61,11 @@ def add_cards(cards: list[dict[str, str]], deck: str | None = None) -> dict[str,
             {
                 "deckName": deck,
                 "modelName": "Basic",
-                "fields": {"Front": c["front"], "Back": c["back"]},
+                "fields": {
+                    "Front": c["front"],
+                    "Back": c["back"] + (
+                        f"<hr><small>source: {c['source']}</small>" if c.get("source") else ""),
+                },
                 "tags": ["popstack"],
                 "options": {"allowDuplicate": False},
             }
@@ -64,6 +73,14 @@ def add_cards(cards: list[dict[str, str]], deck: str | None = None) -> dict[str,
         ]
         ids = _call("addNotes", notes=notes)
         added = [i for i in ids if i]
-        return {"added": len(added), "skipped_duplicates": len(ids) - len(added), "deck": deck}
+        synced = False
+        if sync and added:
+            try:
+                _call("sync")
+                synced = True
+            except (httpx.HTTPError, RuntimeError):
+                pass  # not logged into AnkiWeb yet; cards are still added locally
+        return {"added": len(added), "note_ids": added,
+                "skipped_duplicates": len(ids) - len(added), "deck": deck, "synced": synced}
     except (httpx.HTTPError, RuntimeError) as e:
         return {"error": f"{_UNAVAILABLE} ({e})"}

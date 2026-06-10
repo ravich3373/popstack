@@ -83,10 +83,7 @@ def _py_search(term: str, vault: Path, limit: int) -> list[dict[str, Any]]:
     return hits
 
 
-def vault_search(term: str, limit: int = 10) -> list[dict[str, Any]]:
-    vault = config.VAULT_PATH
-    if not vault.exists():
-        return []
+def _search_one(term: str, vault: Path, limit: int) -> list[dict[str, Any]]:
     if shutil.which("rg"):
         try:
             return _rg_search(term, vault, limit)
@@ -95,29 +92,62 @@ def vault_search(term: str, limit: int = 10) -> list[dict[str, Any]]:
     return _py_search(term, vault, limit)
 
 
+def vault_search(term: str, limit: int = 10) -> list[dict[str, Any]]:
+    """Search every configured vault (kb/coding/formalisms/…). Each hit is
+    tagged with the `vault` it came from, up to `limit` hits per vault."""
+    out: list[dict[str, Any]] = []
+    seen: set[Path] = set()
+    for vault in config.VAULTS:
+        rv = vault.resolve()
+        if rv in seen or not vault.exists():
+            continue
+        seen.add(rv)
+        for hit in _search_one(term, vault, limit):
+            hit["vault"] = vault.name
+            out.append(hit)
+    return out
+
+
 def ground(task: dict[str, Any]) -> dict[str, Any]:
-    """Vault + Zotero context for a task, ranked by how many terms hit a file."""
+    """Vault + Zotero context for a task, ranked by how many terms hit a note,
+    across all configured vaults. Notes are keyed by (vault, file) so the same
+    filename in two vaults doesn't collide — and so connections can span vaults."""
     terms = _terms(task)
-    file_hits: dict[str, dict[str, Any]] = defaultdict(lambda: {"terms": set(), "snippets": []})
+    file_hits: dict[tuple[str, str], dict[str, Any]] = defaultdict(
+        lambda: {"terms": set(), "snippets": []}
+    )
+    term_vaults: dict[str, set[str]] = defaultdict(set)
     for term in terms:
         for hit in vault_search(term):
-            entry = file_hits[hit["file"]]
+            v = hit.get("vault", "")
+            entry = file_hits[(v, hit["file"])]
             entry["terms"].add(term)
+            term_vaults[term].add(v)
             if len(entry["snippets"]) < 3:
                 entry["snippets"].append(hit["snippet"])
 
     notes = sorted(
         (
-            {"file": f, "matched_terms": sorted(v["terms"]), "snippets": v["snippets"]}
-            for f, v in file_hits.items()
+            {"vault": vault, "file": f, "matched_terms": sorted(v["terms"]),
+             "snippets": v["snippets"]}
+            for (vault, f), v in file_hits.items()
         ),
         key=lambda e: -len(e["matched_terms"]),
-    )[:8]
+    )[:10]
+
+    # Concepts that appear in 2+ vaults are cross-vault connection candidates
+    # (e.g. a paper's math in `formalisms` + its implementation in `coding`).
+    # The substrate for agent-maintained linking (FR-7 / ADR-015).
+    cross_vault = sorted(
+        ({"term": t, "vaults": sorted(vs)} for t, vs in term_vaults.items() if len(vs) >= 2),
+        key=lambda c: c["term"],
+    )
 
     zot = zotero.search(" ".join(terms[:3]) or task.get("title", ""), limit=5)
     return {
         "task_id": task.get("id"),
         "search_terms": terms,
         "vault_notes": notes,
+        "cross_vault_connections": cross_vault,
         "zotero": zot,
     }
