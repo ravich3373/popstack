@@ -52,22 +52,34 @@ claude mcp add popstack --scope user -- uv --directory ~/Documents/repos/popstac
 Then in any session: *"pop a task and ground it"*, *"park it — next action:
 re-derive the update rule"*, *"capture: read the FSRS paper, due Friday"*.
 
-## Use from your phone (claude.ai connector over Tailscale)
+## Use from your phone
 
-1. On the always-on node:
-   ```bash
-   set -a; source .env; set +a       # POPSTACK_AUTH_TOKEN must be set!
-   uv run popstack --http            # serves 127.0.0.1:8444
-   tailscale funnel --bg 8444        # public HTTPS url on your tailnet node
-   ```
-2. claude.ai → Settings → Connectors → **Add custom connector** → the Funnel
-   URL + `/mcp` path. Configure the bearer token if the connector UI offers
-   auth headers; the server rejects requests without it either way.
-3. The Claude iOS/Android app now pops/parks/grounds from anywhere.
+> ⚠️ **The claude.ai connector route is not ready yet.** claude.ai web/mobile
+> custom connectors authenticate via **OAuth 2.1** (PKCE / dynamic client
+> registration), not a static bearer token — there is no field to paste a
+> token into. popstack does not implement an OAuth provider yet (it's the
+> P1 milestone). So the phone-via-Claude-app path is **blocked on OAuth**.
+>
+> What *does* work on the phone today:
+> - **Obsidian mobile** renders the Stack and `Today.md` (below) over your
+>   vault's own sync — glanceable, and you can capture by editing markdown.
+> - Any **header-controllable MCP client** (Claude Code with `--header`,
+>   curl, the Agent SDK) can use the HTTP endpoint with the bearer token.
 
-> Funnel makes the endpoint public. The bearer check in `server.py` is the
-> minimum viable guard; the proper upgrade is MCP OAuth — do that before
-> putting anything sensitive in task bodies.
+The HTTP transport, for those header-controllable clients (and as the base
+the future OAuth layer will wrap):
+
+```bash
+uv sync --extra http              # installs uvicorn (only the --http path needs it)
+set -a; source .env; set +a       # POPSTACK_AUTH_TOKEN must be set
+uv run popstack --http            # serves 127.0.0.1:8444; refuses to start unauthenticated
+# first time only: enable Funnel for your tailnet, then:
+tailscale funnel --bg 8444        # 8444 = LOCAL port; public URL lands on :443 — copy what it prints
+```
+
+> Funnel makes the endpoint **public internet**. The bearer token is the
+> floor; real login (MCP OAuth) is the P1 upgrade — do it before any task
+> body holds anything sensitive.
 
 ## Tier 2: the glanceable Today.md
 
@@ -77,6 +89,16 @@ uv run popstack-today   # writes <vault>/Stack/Today.md
 
 Schedule it (launchd/cron) every morning on the always-on node; Obsidian sync
 puts it on your phone. Top-3 by weight, overdue, stale (3+ pushes), Anki due.
+
+## Smoke checklist
+
+After `uv sync`, a quick end-to-end sanity check:
+
+- `uv run pytest -q` — 30 tests green.
+- 13 tools registered: `uv run python -c "import asyncio; from popstack.server import mcp; print(len(asyncio.run(mcp.list_tools())))"`
+- HTTP fails closed: `POPSTACK_AUTH_TOKEN= uv run popstack --http` refuses to start.
+- Full loop (against a throwaway vault):
+  `POPSTACK_VAULT=$(mktemp -d) uv run python -c "from popstack.stack import Stack; s=Stack(); t=s.capture('demo'); p=s.pop(); print(s.park(p['id'],'next step')); print(s.complete(p['id']))"`
 
 ## Design notes (the why)
 

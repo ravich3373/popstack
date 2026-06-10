@@ -30,7 +30,7 @@ the laptop *and* the Claude phone app, with no popstack UI code at all.
 ```
 ┌─ always-on machine ────────────────────────────────────────────┐
 │                                                                │
-│  popstack MCP server (Python, ~600 lines)                      │
+│  popstack MCP server (Python, ~700 lines of code)                      │
 │  ├── stack.py      task engine     ──►  <vault>/Stack/*.md     │
 │  ├── grounding.py  vault search    ──►  <vault>/**/*.md        │
 │  ├── zotero.py     papers          ──►  localhost:23119 (read) │
@@ -135,10 +135,10 @@ weight = 1.0                                            base
        +  2.0 · min(age_days / 365, 1)                  aging, capped
 ```
 
-Worked example (from the live smoke test): a high-priority task due in
-2 days scores `1 + 10.36 + 6 + 0 ≈ 17.4`; a fresh, undated, medium task
-scores `1 + 0 + 3 + 0 = 4`. Drawing odds ≈ 81% / 19% — urgency dominates
-without monopolizing.
+Worked example: a high-priority task due in 2 days scores
+`1 + 12·(12/14) + 6 + 0 = 1 + 10.29 + 6 ≈ 17.29`; a fresh, undated, medium
+task scores `1 + 0 + 3 + 0 = 4`. Drawing odds ≈ 81% / 19% — urgency
+dominates without monopolizing.
 
 **Where the constants come from.** They are a port of the "urgency"
 coefficients of **Taskwarrior** — a ~15-year-old open-source CLI task
@@ -159,7 +159,7 @@ a single dominant task.
 
 ## 4. Component map
 
-Read this next to the source; no file exceeds ~250 lines.
+Read this next to the source; the largest file (stack.py) is ~310 lines.
 
 | File | Responsibility | Notes |
 |------|----------------|-------|
@@ -178,20 +178,25 @@ logic of its own.
 ## 5. Transports & security
 
 - **stdio (laptop):** trust boundary is the OS user; no auth.
-- **HTTP + Funnel (phone):** Funnel makes the endpoint **public internet**.
+- **HTTP + Funnel:** Funnel makes the endpoint **public internet**.
   Defense, in order:
   1. **Bearer token** — a single shared secret sent as an HTTP header
-     (`Authorization: Bearer …`); the middleware in `server.py` rejects
-     anything else with 401. This is the simplest possible auth — a floor,
-     not an answer.
-  2. **Funnel stays off** until phone access is actually wanted.
-  3. **OAuth (planned, P1 exit):** real login, required by NFR-3 before
-     task contents become sensitive. ADR-007 is to be superseded by that
-     implementation.
-- **Blast radius if the token leaks:** an attacker can read/write markdown
-  under `Stack/`, create Anki cards, and add Zotero metadata. They cannot
-  run shell commands or touch arbitrary paths — every path derives from
-  config, and task ids resolve only within the Stack directories.
+     (`Authorization: Bearer …`), compared in constant time; the middleware
+     in `server.py` rejects anything else with 401, and `--http` refuses to
+     start without a token (or `--insecure`, which forces loopback). A
+     floor, not an answer — and note it only works for *header-controllable*
+     clients (Claude Code `--header`, curl, the Agent SDK).
+  2. **The claude.ai connector is not covered by this** — claude.ai custom
+     connectors require OAuth 2.1, not a static header, so the phone-app
+     route is *blocked* until OAuth lands (P1). See README.
+  3. **Funnel stays off** until remote access is actually wanted.
+  4. **OAuth (planned, P1 exit):** real login, required by NFR-3 before
+     task contents become sensitive. ADR-007 is to be superseded by it.
+- **Blast radius if the token leaks:** read access spans the **whole vault
+  except `Stack/`** (via `vault_search`/`ground_task`); write access is
+  confined to `Stack/` markdown, plus creating Anki cards and adding Zotero
+  metadata. No shell, no arbitrary paths — task ids are charset-validated
+  and resolve only within the Stack directories.
 
 ## 6. Alternatives considered
 
@@ -203,7 +208,7 @@ logic of its own.
 | Park rule | next step mandatory | free-form park | a specific written plan is what stops an open task from nagging (Masicampo & Baumeister 2011), and future-you restarts warm (ADR-005) |
 | Server | one custom MCP server | composing community Obsidian/Zotero/Anki MCP servers | the product *is* the loop semantics (weights, cooldowns, the park contract) — generic servers can't enforce them; the integration clients are trivially small (ADR-006) |
 | Phone UI | claude.ai connector | building an app now | full interactivity for zero UI code; an app is deferred until real usage shows which four screens matter (PRD P3) |
-| Flashcard reviews | Anki's own apps | building review UI | FSRS scheduling + offline + mobile polish are years of shipped work; popstack only *creates* cards (ADR-006) |
+| Flashcard reviews | Anki's own apps | building review UI | FSRS (the Free Spaced Repetition Scheduler that Anki uses) + offline + mobile polish are years of shipped work; popstack only *creates* cards (ADR-006) |
 
 ## 7. Failure modes
 
