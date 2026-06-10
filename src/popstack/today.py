@@ -16,7 +16,7 @@ def render() -> str:
     stack = Stack()
     active = stack.list_pool("active", now)
     health = stack.health(now)
-    anki = anki_mod.status()
+    anki = anki_mod.status(timeout=2.0, include_decks=False)
 
     lines = [
         f"# Today — {now:%a %Y-%m-%d}",

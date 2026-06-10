@@ -3,6 +3,7 @@ available, pure-python fallback) and Zotero, return structured hits. The
 model on the other end composes the brief — this module just finds.
 """
 
+import json
 import re
 import shutil
 import subprocess
@@ -34,15 +35,32 @@ def _terms(task: dict[str, Any]) -> list[str]:
 
 
 def _rg_search(term: str, vault: Path, limit: int) -> list[dict[str, Any]]:
-    cmd = ["rg", "-i", "--no-heading", "-n", "-m", "3", "-g", "*.md",
+    # --json gives unambiguous fields (a colon in the vault path or the matched
+    # line would corrupt the plain "path:lineno:text" format).
+    cmd = ["rg", "-i", "--json", "-m", "3", "-g", "*.md",
            "-g", f"!{config.STACK_DIRNAME}/**", "--fixed-strings", term, str(vault)]
     out = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
-    hits = []
-    for line in out.stdout.splitlines()[:limit]:
-        path, _, rest = line.partition(":")
-        lineno, _, snippet = rest.partition(":")
-        hits.append({"file": str(Path(path).relative_to(vault)),
-                     "line": int(lineno or 0), "snippet": snippet.strip()[:240]})
+    hits: list[dict[str, Any]] = []
+    for line in out.stdout.splitlines():
+        if len(hits) >= limit:
+            break
+        try:
+            evt = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if evt.get("type") != "match":
+            continue
+        data = evt["data"]
+        path_text = data.get("path", {}).get("text")
+        if not path_text:
+            continue
+        try:
+            rel = str(Path(path_text).relative_to(vault))
+        except ValueError:
+            rel = path_text
+        hits.append({"file": rel,
+                     "line": data.get("line_number", 0),
+                     "snippet": (data.get("lines", {}).get("text") or "").strip()[:240]})
     return hits
 
 

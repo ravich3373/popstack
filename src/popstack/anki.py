@@ -12,11 +12,11 @@ from . import config
 _TIMEOUT = 8.0
 
 
-def _call(action: str, **params: Any) -> Any:
+def _call(action: str, timeout: float = _TIMEOUT, **params: Any) -> Any:
     r = httpx.post(
         config.ANKI_URL,
         json={"action": action, "version": 6, "params": params},
-        timeout=_TIMEOUT,
+        timeout=timeout,
     )
     r.raise_for_status()
     body = r.json()
@@ -31,12 +31,17 @@ _UNAVAILABLE = (
 )
 
 
-def status() -> dict[str, Any]:
+def status(timeout: float = _TIMEOUT, include_decks: bool = True) -> dict[str, Any]:
+    """AnkiConnect status. On the scheduled Today.md path, pass a short
+    timeout and include_decks=False so a down Anki fails fast (the render
+    only needs due_cards)."""
     try:
-        version = _call("version")
-        due = _call("findCards", query="is:due")
-        return {"available": True, "ankiconnect_version": version,
-                "due_cards": len(due), "decks": _call("deckNames")}
+        version = _call("version", timeout=timeout)
+        due = _call("findCards", timeout=timeout, query="is:due")
+        out = {"available": True, "ankiconnect_version": version, "due_cards": len(due)}
+        if include_decks:
+            out["decks"] = _call("deckNames", timeout=timeout)
+        return out
     except (httpx.HTTPError, RuntimeError) as e:
         return {"available": False, "error": f"{_UNAVAILABLE} ({e})"}
 
