@@ -50,14 +50,25 @@ def _slugify(title: str) -> str:
     return slug or "task"
 
 
+# Task ids are `<slug>-<6 hex>` (see capture); a bare slug charset. Anything
+# else is rejected so a caller-supplied id can never escape the Stack dir.
+_ID_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
+
+
 def _parse_dt(value: Any) -> dt.datetime | None:
+    """Parse a date/datetime from frontmatter. Returns None for anything
+    unparseable (e.g. a hand-typed 'next friday') so one malformed file can't
+    crash pop()/list/health for the whole pool."""
     if value is None or value == "":
         return None
     if isinstance(value, dt.datetime):
         return value
     if isinstance(value, dt.date):
         return dt.datetime.combine(value, dt.time())
-    return dt.datetime.fromisoformat(str(value))
+    try:
+        return dt.datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
 
 
 class Stack:
@@ -70,9 +81,16 @@ class Stack:
     # ---------- file plumbing ----------
 
     def _path(self, task_id: str) -> Path:
+        # Validate at this single chokepoint so every caller (park/complete/
+        # move/ground) is covered against path traversal via a crafted id.
+        if not _ID_RE.fullmatch(task_id or ""):
+            raise FileNotFoundError(f"no task with id '{task_id}'")
         for pool in POOLS:
             p = self.root / pool / f"{task_id}.md"
             if p.exists():
+                # belt-and-suspenders: never return a path outside the pool dir
+                if p.resolve().parent != (self.root / pool).resolve():
+                    raise FileNotFoundError(f"no task with id '{task_id}'")
                 return p
         raise FileNotFoundError(f"no task with id '{task_id}'")
 
@@ -199,6 +217,8 @@ class Stack:
         idx = rng.choices(range(len(eligible)), weights=[w["total"] for w in weights], k=1)[0]
         path, post = eligible[idx]
 
+        # last_popped is user-facing history (rendered in Obsidian); no code
+        # reads it. Single-writer model, so no locking (see DECISIONS ADR-001).
         post.metadata["last_popped"] = now.isoformat(timespec="seconds")
         self._save(path, post)
         return self._summary(
@@ -241,13 +261,20 @@ class Stack:
     def complete(self, task_id: str, note: str = "", now: dt.datetime | None = None) -> dict[str, Any]:
         now = now or _now()
         path = self._path(task_id)
+        if self._pool_of(path) == "done":
+            # already completed — re-completing must not write-then-delete the
+            # same file (that would destroy the record). Return the existing one.
+            post = self._load(path)
+            return self._summary(path, post, completed_at=post.metadata.get("completed_at"))
         post = self._load(path)
         post.metadata["completed_at"] = now.isoformat(timespec="seconds")
         if note:
             post.content = (post.content.rstrip() + f"\n\n- done: {note}").lstrip()
         dest = self.root / "done" / path.name
-        self._save(dest, post)
-        path.unlink()
+        # write metadata to the source, then move atomically (no save+unlink
+        # window that could leave the task in both pools after a crash).
+        self._save(path, post)
+        path.replace(dest)
         return self._summary(dest, post, completed_at=post.metadata["completed_at"])
 
     def move(self, task_id: str, to: str) -> dict[str, Any]:
