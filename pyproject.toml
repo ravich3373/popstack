@@ -7,8 +7,11 @@ dependencies = [
     "mcp>=1.9",
     "httpx>=0.27",
     "python-frontmatter>=1.1",
-    "uvicorn>=0.30",
 ]
+
+[project.optional-dependencies]
+# only needed for the `--http` transport (claude.ai connector via Funnel)
+http = ["uvicorn>=0.30"]
 
 [dependency-groups]
 dev = ["pytest>=8.0"]
