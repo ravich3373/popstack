@@ -124,6 +124,9 @@ class Stack:
             "tags": meta.get("tags", []),
             "est_minutes": meta.get("est_minutes"),
             "created": str(meta.get("created", "")),
+            "goal": meta.get("goal"),
+            "subgoal": meta.get("subgoal"),
+            "deps": meta.get("deps", []),
         }
         out.update(extra)
         return out
@@ -139,8 +142,13 @@ class Stack:
         priority: str = "medium",
         est_minutes: int | None = None,
         pool: str = "active",
+        goal: str | None = None,
+        subgoal: str | None = None,
+        deps: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Create a task. If the active pool is full, it lands in the reservoir."""
+        """Create a subtask. If the active pool is full, it lands in the
+        reservoir. A subtask may belong to a goal/subgoal and depend on other
+        subtasks (by id) that must complete before it becomes eligible."""
         if priority not in PRIORITY_WEIGHT:
             raise ValueError(f"priority must be one of {sorted(PRIORITY_WEIGHT)}")
         if pool not in ("active", "reservoir"):
@@ -166,6 +174,12 @@ class Stack:
             meta["tags"] = tags
         if est_minutes:
             meta["est_minutes"] = est_minutes
+        if goal:
+            meta["goal"] = goal
+        if subgoal:
+            meta["subgoal"] = subgoal
+        if deps:
+            meta["deps"] = list(deps)
 
         post = frontmatter.Post(body, **meta)
         path = self.root / pool / f"{task_id}.md"
@@ -174,8 +188,13 @@ class Stack:
 
     # ---------- weighting & pop ----------
 
+    def _done_ids(self) -> set[str]:
+        return {p.stem for p, _ in self._tasks_in("done")}
+
     def _weight(self, post: frontmatter.Post, now: dt.datetime) -> dict[str, float]:
         meta = post.metadata
+        # Deadlines are optional for learning goals (ADR-008 §5); the term stays
+        # for the rare dated task but contributes 0 when no due is set.
         due_term = 0.0
         due = _parse_dt(meta.get("due"))
         if due:
@@ -184,51 +203,103 @@ class Stack:
 
         priority_term = PRIORITY_WEIGHT.get(str(meta.get("priority", "medium")), 3.0)
 
+        # Aging (ADR-011): boost only *un-offered* tasks (never drawn, never
+        # parked) — a "forgotten" task should resurface; an "avoided" one (it's
+        # been offered and pushed back) should NOT be nagged louder.
+        pushes = int(meta.get("pushes", 0))
+        offered = pushes > 0 or bool(meta.get("last_popped"))
         age_term = 0.0
-        created = _parse_dt(meta.get("created"))
-        if created:
-            age_days = max((now - created).total_seconds() / 86400, 0.0)
-            age_term = AGE_MAX * min(age_days / AGE_CAP_DAYS, 1.0)
+        if not offered:
+            created = _parse_dt(meta.get("created"))
+            if created:
+                age_days = max((now - created).total_seconds() / 86400, 0.0)
+                age_term = AGE_MAX * min(age_days / AGE_CAP_DAYS, 1.0)
 
-        total = 1.0 + due_term + priority_term + age_term
-        return {"total": total, "due": due_term, "priority": priority_term, "age": age_term}
+        base = 1.0 + due_term + priority_term + age_term
+        # Pushes penalty (ADR-011): a task parked many times draws *less*, so an
+        # avoided task fades from the rotation toward triage instead of dominating.
+        penalty = 1.0 + 0.4 * pushes
+        total = base / penalty
+        return {
+            "total": total, "due": due_term, "priority": priority_term,
+            "age": age_term, "pushes_penalty": penalty,
+        }
 
     def _eligible(self, now: dt.datetime) -> list[tuple[Path, frontmatter.Post]]:
+        done = self._done_ids()
         out = []
         for path, post in self._tasks_in("active"):
             cooldown = _parse_dt(post.metadata.get("cooldown_until"))
             if cooldown and cooldown > now:
                 continue
+            # dependency gate: every listed dep must be complete (in done/)
+            deps = post.metadata.get("deps") or []
+            if any(d not in done for d in deps):
+                continue
             out.append((path, post))
         return out
 
-    def pop(self, now: dt.datetime | None = None, rng: random.Random | None = None) -> dict[str, Any]:
-        """Weighted-random pop from the active pool. Does not remove the task —
-        it stamps last_popped; you finish with complete() or park()."""
+    # Resume bias (ADR-009): the next draw should usually *continue the current
+    # thread*, not jump to an unrelated goal — random switching across domains is
+    # the costly kind of task-switch. Same-goal eligible tasks get this multiplier.
+    RESUME_BIAS = 4.0
+
+    def _current_goal(self) -> str | None:
+        """Infer the thread to continue: the goal of the most recently popped
+        active task (the one you were just working)."""
+        best_goal, best_when = None, ""
+        for _, post in self._tasks_in("active"):
+            lp = str(post.metadata.get("last_popped") or "")
+            if lp > best_when and post.metadata.get("goal"):
+                best_when, best_goal = lp, post.metadata["goal"]
+        return best_goal
+
+    def draw(
+        self,
+        now: dt.datetime | None = None,
+        rng: random.Random | None = None,
+        current_goal: str | None = None,
+        resume: bool = True,
+    ) -> dict[str, Any]:
+        """Hand over the next subtask. Weighted sample over eligible (uncooled,
+        dependency-satisfied) active subtasks, biased to continue the current
+        goal/thread (resume=True). Stamps last_popped; finish with complete()
+        or park(). Does not remove the task."""
         now = now or _now()
         rng = rng or random.Random()
         eligible = self._eligible(now)
         if not eligible:
             raise LookupError(
-                "nothing eligible to pop (active pool empty or everything cooling down)"
+                "nothing eligible to draw (active pool empty, all cooling down, "
+                "or all blocked by incomplete dependencies)"
             )
 
+        thread = current_goal if current_goal is not None else (self._current_goal() if resume else None)
         weights = [self._weight(post, now) for _, post in eligible]
-        idx = rng.choices(range(len(eligible)), weights=[w["total"] for w in weights], k=1)[0]
+        sample = []
+        for (_, post), w in zip(eligible, weights):
+            biased = w["total"] * (self.RESUME_BIAS if thread and post.metadata.get("goal") == thread else 1.0)
+            sample.append(biased)
+        idx = rng.choices(range(len(eligible)), weights=sample, k=1)[0]
         path, post = eligible[idx]
 
-        # last_popped is user-facing history (rendered in Obsidian); no code
-        # reads it. Single-writer model, so no locking (see DECISIONS ADR-001).
+        # last_popped is user-facing history (rendered in Obsidian) and feeds the
+        # resume-thread inference above. Single-writer model, no locking (ADR-001).
         post.metadata["last_popped"] = now.isoformat(timespec="seconds")
         self._save(path, post)
         return self._summary(
             path,
             post,
             body=post.content.strip(),
-            weight=round(weights[idx]["total"], 2),
+            weight=round(sample[idx], 2),
             weight_breakdown={k: round(v, 2) for k, v in weights[idx].items() if k != "total"},
+            resumed_thread=thread,
             pool_size=len(eligible),
         )
+
+    # backwards-compatible alias (the tool/UI now says "draw")
+    def pop(self, now: dt.datetime | None = None, rng: random.Random | None = None) -> dict[str, Any]:
+        return self.draw(now=now, rng=rng, resume=False)
 
     # ---------- park / complete / move ----------
 

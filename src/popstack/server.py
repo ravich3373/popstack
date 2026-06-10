@@ -19,6 +19,8 @@ from mcp.server.fastmcp import FastMCP
 from . import anki as anki_mod
 from . import config, grounding
 from . import zotero as zotero_mod
+from . import templates
+from .goals import Goals
 from .stack import Stack
 
 mcp = FastMCP("popstack")
@@ -27,6 +29,64 @@ mcp = FastMCP("popstack")
 def _stack() -> Stack:
     return Stack()
 
+
+# ---------- goals (decompose a source into a plan) ----------
+
+@mcp.tool()
+def list_source_templates() -> dict:
+    """Source-types that have a built-in decomposition template
+    (paper, codebase, language, algorithm, system-design). For anything else,
+    decompose it yourself and pass the outline to decompose_source."""
+    return {"kinds": templates.kinds(),
+            "note": "for an unlisted kind, pass an outline to decompose_source"}
+
+
+@mcp.tool()
+def decompose_source(
+    title: str,
+    kind: str,
+    source: str = "",
+    outline: list[dict] | None = None,
+) -> dict:
+    """Turn a source into an editable goal -> subgoal -> subtask plan (FR-1).
+    kind: paper|codebase|language|algorithm|system-design (or your own).
+    If kind has a built-in template, omit `outline`. Otherwise YOU decompose
+    the source and pass outline=[{"subgoal": str, "subtasks": [str,...]}, ...]
+    (the agent fallback). The first subgoal's subtasks start active; the rest
+    wait in the reservoir until promote_subgoal. Returns the plan; the user can
+    edit it with capture_task/move_task/complete_task."""
+    try:
+        return Goals().create(title, kind, source or None, outline)
+    except ValueError as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def show_plan(goal_id: str) -> dict:
+    """The goal's plan grouped by subgoal, with progress."""
+    try:
+        return Goals().plan(goal_id)
+    except FileNotFoundError as e:
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def list_goals() -> list[dict]:
+    """All learning goals with progress."""
+    return Goals().list_goals()
+
+
+@mcp.tool()
+def promote_subgoal(goal_id: str) -> dict:
+    """Bring the next staged subgoal's subtasks into the active pool (call when
+    the current subgoal is done)."""
+    try:
+        return Goals().promote_next(goal_id)
+    except FileNotFoundError as e:
+        return {"error": str(e)}
+
+
+# ---------- the execution loop ----------
 
 @mcp.tool()
 def capture_task(
@@ -37,21 +97,28 @@ def capture_task(
     priority: str = "medium",
     est_minutes: int | None = None,
     pool: str = "active",
+    goal: str | None = None,
+    subgoal: str | None = None,
+    deps: list[str] | None = None,
 ) -> dict:
-    """Push a new task. priority: high|medium|low. due: YYYY-MM-DD. Use
-    [[wikilinks]] in body to connect the task to vault notes (improves
-    grounding). If the active pool is full it lands in the reservoir."""
-    return _stack().capture(title, body, tags, due, priority, est_minutes, pool)
+    """Push a new subtask. priority: high|medium|low. Use [[wikilinks]] in body
+    to connect it to vault notes. Optionally attach it to a goal/subgoal and
+    list dep subtask-ids that must finish first. If the active pool is full it
+    lands in the reservoir."""
+    return _stack().capture(title, body, tags, due, priority, est_minutes, pool,
+                            goal, subgoal, deps)
 
 
 @mcp.tool()
-def pop_task() -> dict:
-    """Weighted-random pop from the active pool (deadline + priority +
-    capped age; cooling-down tasks excluded). Returns the task with its
-    weight breakdown. Follow with ground_task, then work a timebox, then
-    complete_task or park_task."""
+def draw_next(current_goal: str | None = None) -> dict:
+    """Hand over the next subtask to work on — a weighted sample over eligible
+    active subtasks (priority + neglect; dependency-blocked and cooling-down
+    excluded), biased to CONTINUE the current goal/thread rather than jump to an
+    unrelated one (ADR-009). Pass current_goal to force a thread, else it's
+    inferred from what you most recently worked. Follow with ground_task, work
+    a focused block, then complete_task or park_task."""
     try:
-        return _stack().pop()
+        return _stack().draw(current_goal=current_goal)
     except LookupError as e:
         return {"error": str(e)}
 

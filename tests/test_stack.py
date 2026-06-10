@@ -34,7 +34,7 @@ def test_pop_returns_task_with_weight_breakdown(stack):
     popped = stack.pop(now=NOW, rng=random.Random(7))
     assert popped["title"] == "solo task"
     assert popped["weight"] >= 1.0
-    assert set(popped["weight_breakdown"]) == {"due", "priority", "age"}
+    assert {"due", "priority", "age"} <= set(popped["weight_breakdown"])
 
 
 def test_pop_empty_raises(stack):
@@ -141,3 +141,45 @@ def test_malformed_date_does_not_poison_pool(stack):
     assert stack.pop(now=NOW, rng=random.Random(1))["id"] in {good["id"], bad["id"]}
     assert len(stack.list_pool("active", NOW)) == 2
     assert stack.health(NOW)["active"] == 2
+
+
+# ---- P2: goal-aware draw (deps, resume-bias, pushes penalty) ----
+
+def test_dependency_blocks_until_dep_complete(stack):
+    a = stack.capture("do first")
+    b = stack.capture("needs a", deps=[a["id"]])
+    # only `a` is eligible while `b` is blocked
+    for _ in range(20):
+        assert stack.draw(now=NOW, rng=random.Random(3))["id"] == a["id"]
+    stack.complete(a["id"], now=NOW)
+    assert stack.draw(now=NOW, rng=random.Random(3))["id"] == b["id"]
+
+
+def test_resume_bias_prefers_current_thread(stack):
+    ga = stack.capture("alpha step", goal="goalA")
+    gb = stack.capture("beta step", goal="goalB")
+    counts = {ga["id"]: 0, gb["id"]: 0}
+    rng = random.Random(11)
+    for _ in range(300):
+        counts[stack.draw(now=NOW, rng=rng, current_goal="goalA")["id"]] += 1
+    assert counts[ga["id"]] > counts[gb["id"]] * 2  # 4x bias → ~80/20
+
+
+def test_pushes_penalty_lowers_draw_weight(stack):
+    fresh = stack.capture("fresh")
+    nagged = stack.capture("avoided")
+    for i in range(4):  # park the avoided task 4 times
+        stack.park(nagged["id"], next_action=f"step {i}", cooldown_hours=0, now=NOW)
+    counts = {fresh["id"]: 0, nagged["id"]: 0}
+    rng = random.Random(5)
+    for _ in range(300):
+        counts[stack.draw(now=NOW, rng=rng, resume=False)["id"]] += 1
+    assert counts[fresh["id"]] > counts[nagged["id"]]  # avoided fades, not escalates
+
+
+def test_age_boost_only_when_unoffered(stack):
+    t = stack.capture("ages")
+    post = stack._load(stack._path(t["id"]))
+    assert stack._weight(post, NOW + dt.timedelta(days=200))["age"] > 0  # unoffered → ages
+    post.metadata["last_popped"] = NOW.isoformat()  # now it's been offered
+    assert stack._weight(post, NOW + dt.timedelta(days=200))["age"] == 0
