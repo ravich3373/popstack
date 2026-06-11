@@ -25,7 +25,8 @@ deployed.** Not yet usable until you register it with Claude Code (see
 not exist yet** (designed, not built). See [Architecture §6](docs/ARCHITECTURE.md)
 for exactly what runs today.
 
-**Docs:** [PRD](docs/PRD.md) (what & why) · [Architecture](docs/ARCHITECTURE.md)
+**Docs:** [Setup & Usage](docs/SETUP.md) (start here — install, configure, use) ·
+[PRD](docs/PRD.md) (what & why) · [Architecture](docs/ARCHITECTURE.md)
 (how it runs / what's live) · [Design](docs/DESIGN.md) (how each part works) ·
 [Portability](docs/PORTABILITY.md) (learn anywhere) ·
 [Decision log](docs/DECISIONS.md) (why these choices — argue with this one)
