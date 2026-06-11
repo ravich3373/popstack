@@ -250,12 +250,21 @@ def zotero_search(query: str, limit: int = 8) -> dict:
 
 
 @mcp.tool()
-def zotero_add_doi(doi: str) -> dict:
-    """Add a paper to Zotero by DOI. Tries the local desktop library first (no
-    key); falls back to the web API only if configured. On failure returns a
-    structured result with per-attempt reasons so you can tell the user what to
-    do (e.g. add it manually)."""
-    return zotero_mod.add_by_doi(doi)
+def zotero_collections() -> dict:
+    """List the user's Zotero collections (folders) with full paths, e.g.
+    'agent/agents/frameworks'. Call this BEFORE zotero_add_doi and pick the
+    best-matching existing collection — never leave papers in the root."""
+    return zotero_mod.collections()
+
+
+@mcp.tool()
+def zotero_add_doi(doi: str, collection: str | None = None) -> dict:
+    """Add a paper to Zotero by DOI, FILED INTO `collection` (a path like
+    'agent/agents/frameworks', a name, or a key — call zotero_collections first
+    and choose the right existing one). Tries the local desktop library first,
+    then the web API if configured. On failure returns per-attempt reasons and
+    the intended collection so you can tell the user where to add it manually."""
+    return zotero_mod.add_by_doi(doi, collection)
 
 
 @mcp.tool()

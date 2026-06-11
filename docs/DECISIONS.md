@@ -312,3 +312,34 @@ durable join keys, robust to renames. Cost: a small "link store" the agent keeps
 consistent; broken links if an item is deleted in one tool (acceptable, detect
 on the weekly review). Requires the Better-BibTeX citekey or item key from
 Zotero (item key from the local API suffices; citekeys optional).
+
+---
+
+## ADR-016 — File into the user's EXISTING organization, everywhere; never dump in the root
+**Status:** accepted · 2026-06-10 · generalizes ADR-013
+
+**Context.** A top reason to use an agent is that it *respects your filing
+system* — papers belong in the right Zotero collection, notes in the right
+Obsidian folder/MOC, cards in the right Anki deck. Dumping everything in the
+base location (unfiled items, a flat notes folder, one mega-deck) destroys the
+organization the user spent years building (186 Zotero collections; MOC-indexed
+vaults).
+
+**Decision.** Every write tool is organization-aware: it **discovers the
+existing structure first**, then files into the best-matching existing
+container.
+- **Zotero:** `collections()` lists the folder tree (by path); `add_by_doi`
+  takes a `collection` and files there. Unknown collection → return the
+  available list so the agent re-picks; failed write → report the *intended*
+  collection so the user can file manually.
+- **Obsidian:** `write_note(folder=…)` + `add_to_moc` place notes in the right
+  area and index; the quarantine folder is the *safe default*, not the goal —
+  the agent should ground first and target the real folder/MOC.
+- **Anki:** `add_cards(deck=…)` files into a topic deck, not one bucket.
+The agent picks the container after *reading* the structure; it never invents a
+parallel one (cf. ADR-013).
+
+**Consequences.** New material lands where the user would have put it. Cost: an
+extra discovery read before each write (cheap, and it's also what grounds good
+placement). Where a write can't go through (e.g. read-only local Zotero), the
+tool still reports the *intended* location so the manual fallback stays tidy.

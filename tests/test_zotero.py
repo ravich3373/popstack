@@ -84,3 +84,71 @@ def test_crossref_failure_reported(monkeypatch):
     monkeypatch.setattr(zotero.httpx, "get", fake_get)
     r = zotero.add_by_doi(DOI)
     assert r["added"] is False and "Crossref" in r["error"]
+
+
+# ---- collection-aware filing (follow existing organization) ----
+
+COLLECTIONS = [
+    {"key": "AAAAAAAA", "data": {"name": "agent", "parentCollection": False}},
+    {"key": "BBBBBBBB", "data": {"name": "agents", "parentCollection": "AAAAAAAA"}},
+    {"key": "CCCCCCCC", "data": {"name": "frameworks", "parentCollection": "BBBBBBBB"}},
+]
+
+
+def _patch_collections(monkeypatch):
+    def fake_get(url, *a, **k):
+        if url.endswith("/collections"):
+            return httpx.Response(200, json=COLLECTIONS, request=httpx.Request("GET", url))
+        return httpx.Response(200, json=CROSSREF, request=httpx.Request("GET", url))
+    monkeypatch.setattr(zotero.httpx, "get", fake_get)
+
+
+def test_collections_builds_paths(monkeypatch):
+    _patch_collections(monkeypatch)
+    cols = zotero.collections()["collections"]
+    paths = {c["path"]: c["key"] for c in cols}
+    assert paths["agent/agents/frameworks"] == "CCCCCCCC"
+    assert paths["agent"] == "AAAAAAAA"
+
+
+def test_resolve_by_path_name_key(monkeypatch):
+    _patch_collections(monkeypatch)
+    cols = zotero.collections()["collections"]
+    assert zotero._resolve_collection("agent/agents/frameworks", cols) == "CCCCCCCC"
+    assert zotero._resolve_collection("frameworks", cols) == "CCCCCCCC"   # by name
+    assert zotero._resolve_collection("CCCCCCCC", cols) == "CCCCCCCC"     # by key
+    assert zotero._resolve_collection("nonexistent", cols) is None
+
+
+def test_add_files_into_collection(monkeypatch):
+    _patch_collections(monkeypatch)
+    captured = {}
+
+    def fake_post(url, *a, **k):
+        captured["json"] = k.get("json")
+        return httpx.Response(200, json={"successful": {"0": {"key": "NEW"}}},
+                              request=httpx.Request("POST", url))
+    monkeypatch.setattr(zotero.httpx, "post", fake_post)
+
+    r = zotero.add_by_doi(DOI, collection="agent/agents/frameworks")
+    assert r["added"] and r["filed_in"] == "agent/agents/frameworks"
+    assert captured["json"][0]["collections"] == ["CCCCCCCC"]
+
+
+def test_unknown_collection_lists_available(monkeypatch):
+    _patch_collections(monkeypatch)
+    r = zotero.add_by_doi(DOI, collection="does/not/exist")
+    assert r["added"] is False
+    assert "not found" in r["error"]
+    assert "agent/agents/frameworks" in r["available_collections"]
+
+
+def test_failed_write_reports_intended_collection(monkeypatch):
+    _patch_collections(monkeypatch)
+    monkeypatch.setattr(zotero.httpx, "post",
+                        lambda url, *a, **k: httpx.Response(400, text="Endpoint does not support method",
+                                                           request=httpx.Request("POST", url)))
+    r = zotero.add_by_doi(DOI, collection="frameworks")
+    assert r["added"] is False
+    assert r["intended_collection"] == "agent/agents/frameworks"
+    assert "agent/agents/frameworks" in r["error"]  # tells user where to add manually
