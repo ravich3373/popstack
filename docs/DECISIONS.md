@@ -239,7 +239,10 @@ Cost: depends on the user installing Anki (P3 includes that path).
 ---
 
 ## ADR-013 — Agent-authored notes must conform to the existing KB conventions
-**Status:** accepted · 2026-06-10
+**Status:** accepted · partially implemented 2026-06-10 (`notes.py`: safe write
+primitive — quarantine folder, preview-first, no-clobber, frontmatter +
+wikilinks. The agent supplies content + per-area conventions; automatic
+convention *detection* is still manual/agent-driven.)
 
 **Context.** The vaults have strong, consistent conventions (YAML frontmatter,
 wikilinks-as-navigation, MOCs, callouts for math, numbered/Johnny-Decimal

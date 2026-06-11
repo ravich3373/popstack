@@ -19,6 +19,8 @@ from mcp.server.fastmcp import FastMCP
 from . import anki as anki_mod
 from . import config, grounding
 from . import zotero as zotero_mod
+from . import codebase as codebase_mod
+from . import notes as notes_mod
 from . import templates
 from .goals import Goals
 from .stack import Stack
@@ -172,6 +174,55 @@ def usage_report() -> dict:
     """Token totals per task and per goal (and grand total), from what's been
     recorded via record_usage / the Stop hook."""
     return _stack().usage_report()
+
+
+# ---------- codebases ----------
+
+@mcp.tool()
+def clone_repo(url: str) -> dict:
+    """Shallow-clone a GitHub/git repo into the local workspace for a codebase
+    learning goal. Returns the local path to read."""
+    return codebase_mod.clone_repo(url)
+
+
+@mcp.tool()
+def map_repo(path: str) -> dict:
+    """Map a local repo: languages by line count, build system, likely entry
+    points, top-level layout, README. Use this to ground a codebase decompose_
+    source (pass the result as the outline, or read the entry points first)."""
+    return codebase_mod.map_repo(path)
+
+
+# ---------- writing into the KB (FR-8 / ADR-013, ADR-015) ----------
+
+@mcp.tool()
+def write_note(title: str, body: str, tags: list[str] | None = None,
+               related: list[str] | None = None, source: str | None = None,
+               folder: str | None = None, vault: str | None = None,
+               overwrite: bool = False, preview: bool = False) -> dict:
+    """Create a KB note in the user's conventions (frontmatter + [[wikilinks]]).
+    Defaults to a quarantine folder so it never silently mixes into the vault.
+    ALWAYS call with preview=True first and show the user the content before
+    writing for real (ADR-013). `related` are note titles to wikilink; `source`
+    is a provenance link (zotero://, repo url, file path)."""
+    return notes_mod.write_note(title, body, tags, related, source, folder, vault,
+                                overwrite, preview)
+
+
+@mcp.tool()
+def append_snippet(note: str, snippet: str, lang: str = "", heading: str = "Snippets",
+                   source: str | None = None, preview: bool = False) -> dict:
+    """Append a fenced code snippet to an EXISTING note under `heading` (never
+    rewrites existing content). `note` is a title or path; `source` is e.g.
+    repo/file:line. Use preview=True first."""
+    return notes_mod.append_snippet(note, snippet, lang, heading, source, preview)
+
+
+@mcp.tool()
+def add_to_moc(moc: str, link_to: str, note: str = "") -> dict:
+    """Add a `- [[link_to]] — note` bullet to a Map-of-Content note (created if
+    missing), to keep the KB navigable as it grows."""
+    return notes_mod.add_to_moc(moc, link_to, note)
 
 
 @mcp.tool()

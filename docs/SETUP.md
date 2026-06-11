@@ -96,6 +96,9 @@ calls popstack's tools. A typical learning session:
 | "Tweak it — I already know diffusion policies, drop that subgoal; add 'compare to baselines'." | `complete_task`/`move_task`/`capture_task` |
 | "What should I work on now?" | `draw_next` — the next subtask, biased to continue this goal |
 | "Ground it." | `ground_task` — relevant notes across kb/coding/formalisms + Zotero, with cross-vault connections |
+| "Learn the llama.cpp codebase — here's the GitHub URL." | `clone_repo` → `map_repo` → `decompose_source(kind="codebase", …)` |
+| "Add this function to my Sampler note." | `append_snippet(note, code, lang, source="repo/file:line")` (preview first) |
+| "Make a note for flow matching, link it to DDPM and the paper." | `write_note(title, body, related, source)` (preview first) |
 | "I get it — park this. Next: implement the sampler and check Figure 3." | `park_task(task_id, next_action=…)` |
 | "Done with this one." | `complete_task` |
 | "Finished the math subgoal — bring in the next." | `promote_subgoal(goal_id)` |
@@ -107,7 +110,7 @@ park/complete → promote.**
 
 ---
 
-## 3. Tool reference (20 tools)
+## 3. Tool reference (25 tools)
 
 **Planning** — `list_source_templates`, `decompose_source`, `show_plan`,
 `list_goals`, `promote_subgoal`
@@ -117,6 +120,11 @@ park/complete → promote.**
 
 **Knowledge / grounding** — `ground_task`, `vault_search`, `zotero_search`,
 `zotero_add_doi`
+
+**Codebases** — `clone_repo`, `map_repo`
+
+**Writing into the KB** — `write_note`, `append_snippet`, `add_to_moc`
+(quarantine folder by default; always `preview=True` first)
 
 **Retention (Anki)** — `anki_status`, `anki_add_cards`
 

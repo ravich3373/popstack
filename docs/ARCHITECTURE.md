@@ -137,6 +137,8 @@ phone: AnkiDroid ← sync ← AnkiWeb → you review, offline, in bed
 | P2 engine (decompose, draw, goals) | ✅ **code + tests on GitHub** | — |
 | Use it on the **laptop** | ⚠️ **not until you run one command** | `claude mcp add popstack --scope user -- uv --directory ~/Documents/repos/popstack run popstack`, then talk to it in a Claude Code session |
 | Grounding across all 3 vaults + cross-vault connections | ✅ **code + tests** | set `POPSTACK_VAULTS` to your vaults |
+| Codebase support (clone, map, decompose) | ✅ **code + tests** | `clone_repo`/`map_repo`; the agent reads the code with its own tools |
+| Writing notes into the KB (snippets, MOCs, links) | ✅ **code + tests** (quarantine folder, preview-first, no-clobber) | `write_note`/`append_snippet`/`add_to_moc`; set `POPSTACK_NOTES_*` |
 | Retention / Anki on phone | ❌ Anki not installed | install Anki + AnkiConnect on a node; set up AnkiDroid + AnkiWeb (P3) |
 | **Agent on the phone** | ❌ **does not exist** | stand up the always-on node + tailnet HTTP serving + a phone Claude surface (PWA+Agent SDK, or claude.ai connector once OAuth) — this is the biggest remaining build |
 | Anything running as a service | ❌ **nothing is deployed** | popstack only runs when a client launches it (stdio) or you run `--http` |
