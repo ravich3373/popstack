@@ -129,7 +129,9 @@ park/complete → promote.**
 **Writing into the KB** — `write_note`, `append_snippet`, `add_to_moc`
 (quarantine folder by default; always `preview=True` first)
 
-**Retention (Anki)** — `anki_status`, `anki_add_cards`
+**Retention (Anki)** — `anki_decks`, `anki_create_deck`, `anki_add_cards`,
+`anki_status` (decks are hierarchical via `::`; file cards into a topic deck,
+not one bucket)
 
 **Token usage** — `record_usage`, `usage_report`
 

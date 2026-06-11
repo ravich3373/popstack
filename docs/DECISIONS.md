@@ -335,7 +335,9 @@ container.
 - **Obsidian:** `write_note(folder=…)` + `add_to_moc` place notes in the right
   area and index; the quarantine folder is the *safe default*, not the goal —
   the agent should ground first and target the real folder/MOC.
-- **Anki:** `add_cards(deck=…)` files into a topic deck, not one bucket.
+- **Anki:** `decks()` lists the deck tree; `add_cards(deck=…)` / `create_deck`
+  file into a topic deck — **hierarchical via `::`** (e.g. `agent::agents::frameworks`,
+  which can mirror the Zotero collection path), not one bucket.
 The agent picks the container after *reading* the structure; it never invents a
 parallel one (cf. ADR-013).
 

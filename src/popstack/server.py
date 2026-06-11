@@ -268,9 +268,26 @@ def zotero_add_doi(doi: str, collection: str | None = None) -> dict:
 
 
 @mcp.tool()
+def anki_decks() -> dict:
+    """List existing Anki decks (hierarchical via '::'). Call this before
+    anki_add_cards so you file cards into the right existing deck (ADR-016)."""
+    return anki_mod.decks()
+
+
+@mcp.tool()
+def anki_create_deck(name: str) -> dict:
+    """Create an Anki deck. Use '::' for topic hierarchy, e.g.
+    'ML::Papers::pi0'. Idempotent."""
+    return anki_mod.create_deck(name)
+
+
+@mcp.tool()
 def anki_add_cards(cards: list[dict], deck: str | None = None) -> dict:
-    """Create Anki cards from recall misses. cards: [{"front":..,"back":..}].
-    Reviews happen in Anki's own apps; this only writes."""
+    """Create Anki cards from recall misses. cards: [{"front":..,"back":..,
+    "source":..(optional)}]. Pass an explicit `deck` chosen for the TOPIC
+    (hierarchical via '::'); call anki_decks first and reuse/extend the tree
+    rather than dumping into one bucket (ADR-016). Reviews happen in Anki's own
+    apps; this only writes (and syncs to AnkiWeb for your phone)."""
     return anki_mod.add_cards(cards, deck)
 
 

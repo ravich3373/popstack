@@ -46,13 +46,38 @@ def status(timeout: float = _TIMEOUT, include_decks: bool = True) -> dict[str, A
         return {"available": False, "error": f"{_UNAVAILABLE} ({e})"}
 
 
+def decks() -> dict[str, Any]:
+    """List existing deck names. Anki decks are hierarchical via '::'
+    (e.g. 'agent::agents::frameworks'), so this is the deck *tree*. Read it
+    before adding cards to file them into the right existing deck (ADR-016)."""
+    try:
+        return {"decks": sorted(_call("deckNames"))}
+    except (httpx.HTTPError, RuntimeError) as e:
+        return {"available": False, "error": f"{_UNAVAILABLE} ({e})"}
+
+
+def create_deck(name: str) -> dict[str, Any]:
+    """Create a deck. Use '::' for hierarchy — e.g. 'ML::Papers::pi0' nests pi0
+    under Papers under ML (Anki creates the whole chain). Idempotent."""
+    name = (name or "").strip()
+    if not name:
+        return {"error": "deck name required"}
+    try:
+        _call("createDeck", deck=name)
+        return {"created": name}
+    except (httpx.HTTPError, RuntimeError) as e:
+        return {"error": f"{_UNAVAILABLE} ({e})"}
+
+
 def add_cards(
     cards: list[dict[str, str]], deck: str | None = None, sync: bool = True
 ) -> dict[str, Any]:
     """cards: [{"front":.., "back":.., "source":..(optional)}, ...] — Basic notes,
-    duplicate-safe. The optional `source` field carries the obsidian://+zotero://
-    backlinks (ADR-015) so a card under review links home. With sync=True, pushes
-    to AnkiWeb after adding so the cards reach your phone (the portability path)."""
+    duplicate-safe. Pass an explicit `deck` chosen for the TOPIC (hierarchical
+    via '::', e.g. 'ML::Papers::pi0') — call decks() first and reuse/extend the
+    existing tree rather than dumping into one bucket (ADR-016). The deck is
+    created (with its parents) if missing. `source` carries obsidian://+zotero://
+    backlinks (ADR-015). sync=True pushes to AnkiWeb so cards reach your phone."""
     deck = deck or config.ANKI_DEFAULT_DECK
     try:
         if deck not in _call("deckNames"):
