@@ -332,9 +332,10 @@ container.
   takes a `collection` and files there. Unknown collection → return the
   available list so the agent re-picks; failed write → report the *intended*
   collection so the user can file manually.
-- **Obsidian:** `write_note(folder=…)` + `add_to_moc` place notes in the right
-  area and index; the quarantine folder is the *safe default*, not the goal —
-  the agent should ground first and target the real folder/MOC.
+- **Obsidian:** `vault_layout()` lists the folder tree + existing MOCs (parallel
+  to `zotero_collections`/`anki_decks`); `write_note(folder=…)` + `add_to_moc`
+  then place the note in the right area and index. The quarantine folder is the
+  *safe default* when placement is unclear, not the goal.
 - **Anki:** `decks()` lists the deck tree; `add_cards(deck=…)` / `create_deck`
   file into a topic deck — **hierarchical via `::`** (e.g. `agent::agents::frameworks`,
   which can mirror the Zotero collection path), not one bucket.

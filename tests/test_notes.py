@@ -64,6 +64,38 @@ def test_append_missing_note_errors(vault):
     assert "error" in notes.append_snippet("nope", "code")
 
 
+def test_vault_layout_discovers_folders_and_mocs(tmp_path, monkeypatch):
+    v = tmp_path / "kb"
+    (v / "leetcode" / "Algorithms").mkdir(parents=True)
+    (v / "systems" / "cuda").mkdir(parents=True)
+    (v / ".obsidian").mkdir()
+    (v / "leetcode" / "Algorithms" / "two-sum.md").write_text("x", encoding="utf-8")
+    (v / "leetcode" / "00-MOC-Data-Structures.md").write_text("moc", encoding="utf-8")
+    (v / "systems" / "cuda" / "streams.md").write_text("x", encoding="utf-8")
+    (v / "systems" / "GPU Programming MOC.md").write_text("moc", encoding="utf-8")
+    (v / ".obsidian" / "config.md").write_text("ignore", encoding="utf-8")
+    monkeypatch.setattr(notes.config, "VAULTS", [v])
+
+    layout = notes.vault_layout("kb")["vaults"][0]
+    folder_paths = {f["path"] for f in layout["folders"]}
+    assert "leetcode/Algorithms" in folder_paths and "systems/cuda" in folder_paths
+    assert not any(f["path"].startswith(".obsidian") for f in layout["folders"])  # hidden skipped
+    assert "leetcode/00-MOC-Data-Structures.md" in layout["mocs"]
+    assert "systems/GPU Programming MOC.md" in layout["mocs"]
+
+
+def test_vault_layout_unknown_vault_empty(tmp_path, monkeypatch):
+    monkeypatch.setattr(notes.config, "VAULTS", [tmp_path / "kb"])
+    assert notes.vault_layout("nope")["vaults"] == []
+
+
+def test_write_note_into_existing_folder(vault):
+    (vault / "systems" / "cuda").mkdir(parents=True)
+    res = notes.write_note("CUDA Streams", "Async execution.", folder="systems/cuda")
+    assert res["written"]
+    assert (vault / "systems" / "cuda" / "cuda-streams.md").exists()
+
+
 def test_add_to_moc_creates_and_dedupes(vault):
     r1 = notes.add_to_moc("ML MOC", "Flow Matching", note="generative models")
     assert r1["linked"]

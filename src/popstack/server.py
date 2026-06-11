@@ -193,7 +193,16 @@ def map_repo(path: str) -> dict:
     return codebase_mod.map_repo(path)
 
 
-# ---------- writing into the KB (FR-8 / ADR-013, ADR-015) ----------
+# ---------- writing into the KB (FR-8 / ADR-013, ADR-015, ADR-016) ----------
+
+@mcp.tool()
+def vault_layout(vault: str | None = None) -> dict:
+    """Discover a vault's existing organization — folder tree (with note counts)
+    and MOC/index notes. Call this BEFORE write_note to file into the right
+    existing folder + MOC, like zotero_collections/anki_decks (ADR-016).
+    `vault` is a name (kb/coding/formalisms) or path; omit for all."""
+    return notes_mod.vault_layout(vault)
+
 
 @mcp.tool()
 def write_note(title: str, body: str, tags: list[str] | None = None,
@@ -201,10 +210,10 @@ def write_note(title: str, body: str, tags: list[str] | None = None,
                folder: str | None = None, vault: str | None = None,
                overwrite: bool = False, preview: bool = False) -> dict:
     """Create a KB note in the user's conventions (frontmatter + [[wikilinks]]).
-    Defaults to a quarantine folder so it never silently mixes into the vault.
-    ALWAYS call with preview=True first and show the user the content before
-    writing for real (ADR-013). `related` are note titles to wikilink; `source`
-    is a provenance link (zotero://, repo url, file path)."""
+    Call vault_layout first and pass the right existing `folder` (and `vault`)
+    plus `related` wikilinks — don't leave it in the quarantine default (ADR-016).
+    ALWAYS preview=True first and show the user before writing for real (ADR-013).
+    `source` is a provenance link (zotero://, repo url, file path)."""
     return notes_mod.write_note(title, body, tags, related, source, folder, vault,
                                 overwrite, preview)
 

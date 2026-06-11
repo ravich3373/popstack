@@ -126,8 +126,9 @@ park/complete → promote.**
 
 **Codebases** — `clone_repo`, `map_repo`
 
-**Writing into the KB** — `write_note`, `append_snippet`, `add_to_moc`
-(quarantine folder by default; always `preview=True` first)
+**Writing into the KB** — `vault_layout` (discover folders + MOCs first),
+`write_note`, `append_snippet`, `add_to_moc` (file into the right existing
+folder/MOC; always `preview=True` first)
 
 **Retention (Anki)** — `anki_decks`, `anki_create_deck`, `anki_add_cards`,
 `anki_status` (decks are hierarchical via `::`; file cards into a topic deck,

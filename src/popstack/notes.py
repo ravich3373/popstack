@@ -13,6 +13,8 @@ Safety (this touches the user's real ~4,358-note vault):
 """
 
 import datetime as dt
+import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +22,52 @@ import frontmatter
 
 from . import config
 from .stack import _slugify
+
+# filename heuristic for Maps-of-Content / index notes (the user's vaults use
+# names like "00-MOC-Data-Structures", "GPU Programming MOC", "00 - Master Index")
+_MOC_RE = re.compile(r"\bmoc\b|master index|map of content|index", re.I)
+
+
+def _resolve_vaults(vault: str | None) -> list[Path]:
+    """Resolve a vault name ('kb') or path to Path(s); None → all configured."""
+    if not vault:
+        return list(config.VAULTS)
+    p = Path(vault).expanduser()
+    if p.exists():
+        return [p]
+    for v in config.VAULTS:  # match by folder name
+        if v.name == vault:
+            return [v]
+    return []
+
+
+def vault_layout(vault: str | None = None, max_depth: int = 3) -> dict[str, Any]:
+    """Discover the existing organization of the knowledge vault(s): the folder
+    tree (with note counts) and existing MOC/index notes. Call this BEFORE
+    write_note so you file a note into the RIGHT existing folder and link it into
+    the RIGHT existing MOC — not the quarantine folder (ADR-016)."""
+    out = []
+    for v in _resolve_vaults(vault):
+        if not v.exists():
+            continue
+        folder_counts: Counter = Counter()
+        mocs: list[str] = []
+        for p in v.rglob("*.md"):
+            parts = p.relative_to(v).parts
+            if any(seg.startswith(".") for seg in parts):
+                continue  # skip .obsidian/.trash/etc
+            folder = "/".join(parts[:-1][:max_depth]) or "(root)"
+            folder_counts[folder] += 1
+            if _MOC_RE.search(p.stem):
+                mocs.append("/".join(parts))
+        folders = [{"path": f, "notes": n} for f, n in sorted(folder_counts.items())]
+        out.append({
+            "vault": v.name,
+            "folders": folders[:250],
+            "folders_truncated": len(folders) > 250,
+            "mocs": sorted(mocs)[:60],
+        })
+    return {"vaults": out}
 
 
 def _allowed_roots() -> list[Path]:
