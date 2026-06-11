@@ -55,8 +55,10 @@ uv run pytest          # should be green
 ```
 
 - **Zotero**: enable *Settings → Advanced → "Allow other applications on this
-  computer to communicate with Zotero"* (fixes the local-API 403). For
-  `zotero_add_doi`, create an API key at zotero.org → Settings → Security.
+  computer to communicate with Zotero"* (fixes the local-API 403). Reads need
+  no key. `zotero_add_doi` tries the local library first, then the web API if
+  `ZOTERO_API_KEY` + `ZOTERO_USER_ID` are set (local writes are often
+  read-only); otherwise it reports the failure so you can add the paper manually.
 - **Anki** (optional): install Anki + AnkiConnect add-on `2055492159`; keep
   Anki running. Cards sync to your phone via AnkiWeb; reviews happen in
   AnkiMobile/AnkiDroid.

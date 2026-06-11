@@ -251,7 +251,10 @@ def zotero_search(query: str, limit: int = 8) -> dict:
 
 @mcp.tool()
 def zotero_add_doi(doi: str) -> dict:
-    """Add a paper to Zotero by DOI (web API; requires ZOTERO_API_KEY)."""
+    """Add a paper to Zotero by DOI. Tries the local desktop library first (no
+    key); falls back to the web API only if configured. On failure returns a
+    structured result with per-attempt reasons so you can tell the user what to
+    do (e.g. add it manually)."""
     return zotero_mod.add_by_doi(doi)
 
 

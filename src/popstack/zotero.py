@@ -5,6 +5,7 @@ DOI) via the web API when ZOTERO_API_KEY/ZOTERO_USER_ID are configured.
 
 import re
 import urllib.parse
+import uuid
 from typing import Any
 
 import httpx
@@ -53,46 +54,86 @@ def search(query: str, limit: int = 8) -> dict[str, Any]:
         return {"error": f"Zotero local API unreachable ({e}). Is the Zotero app running?"}
 
 
+def _item_from_doi(doi: str) -> dict[str, Any]:
+    """Build a Zotero journalArticle item from Crossref metadata for a DOI."""
+    meta = httpx.get(
+        f"https://api.crossref.org/works/{urllib.parse.quote(doi, safe='')}",
+        timeout=_TIMEOUT,
+    ).raise_for_status().json()["message"]
+    return {
+        "itemType": "journalArticle",
+        "title": (meta.get("title") or [""])[0],
+        "creators": [
+            {"creatorType": "author", "firstName": a.get("given", ""), "lastName": a.get("family", "")}
+            for a in meta.get("author", [])[:20]
+        ],
+        "publicationTitle": (meta.get("container-title") or [""])[0],
+        "date": "-".join(str(p) for p in meta.get("issued", {}).get("date-parts", [[""]])[0]),
+        "DOI": doi,
+        "url": meta.get("URL", ""),
+    }
+
+
+def _post_items(url: str, item: dict[str, Any], headers: dict[str, str]) -> tuple[bool, str]:
+    """POST one item to a Zotero API (local or web). Returns (ok, key_or_reason)."""
+    h = {"Zotero-API-Version": "3", "Zotero-Write-Token": uuid.uuid4().hex, **headers}
+    try:
+        r = httpx.post(url, json=[item], headers=h, timeout=_TIMEOUT)
+    except httpx.HTTPError as e:
+        return False, f"unreachable ({e})"
+    if r.status_code >= 400:
+        return False, f"HTTP {r.status_code}: {r.text[:160]}"
+    try:
+        body = r.json()
+    except ValueError:
+        return False, f"non-JSON response (HTTP {r.status_code})"
+    if body.get("successful"):
+        return True, next(iter(body["successful"].values()))["key"]
+    failed = body.get("failed") or {}
+    reason = next(iter(failed.values()), {}).get("message") if failed else "no item created"
+    return False, str(reason)
+
+
 def add_by_doi(doi: str) -> dict[str, Any]:
-    """Create a Zotero item from a DOI via Crossref metadata + the web API."""
-    if not (config.ZOTERO_API_KEY and config.ZOTERO_USER_ID):
-        return {
-            "error": "set ZOTERO_API_KEY and ZOTERO_USER_ID for writes "
-            "(zotero.org → Settings → Security → API keys)"
-        }
+    """Add a paper to Zotero by DOI. Tries the LOCAL API first (no key, writes
+    to the running desktop library); falls back to the WEB API only if a key +
+    user id are configured. Returns a clear, structured result either way so the
+    agent knows what happened and why."""
     doi = doi.strip()
     if not _DOI_RE.fullmatch(doi):
-        return {"error": f"not a valid DOI: {doi!r}"}
+        return {"added": False, "error": f"not a valid DOI: {doi!r}"}
     try:
-        # url-encode the DOI so it can't break out of the URL path
-        meta = httpx.get(
-            f"https://api.crossref.org/works/{urllib.parse.quote(doi, safe='')}",
-            timeout=_TIMEOUT,
-        ).raise_for_status().json()["message"]
-        item = {
-            "itemType": "journalArticle",
-            "title": (meta.get("title") or [""])[0],
-            "creators": [
-                {"creatorType": "author", "firstName": a.get("given", ""), "lastName": a.get("family", "")}
-                for a in meta.get("author", [])[:20]
-            ],
-            "publicationTitle": (meta.get("container-title") or [""])[0],
-            "date": "-".join(str(p) for p in meta.get("issued", {}).get("date-parts", [[""]])[0]),
-            "DOI": doi,
-            "url": meta.get("URL", ""),
-        }
-        r = httpx.post(
+        item = _item_from_doi(doi)
+    except (httpx.HTTPError, KeyError, ValueError) as e:
+        return {"added": False, "error": f"could not fetch DOI metadata from Crossref: {e}"}
+
+    attempts: dict[str, str] = {}
+
+    # 1) local API (preferred): POST <local>/items, no auth needed
+    ok, info = _post_items(f"{config.ZOTERO_LOCAL_URL}/items", item, {})
+    if ok:
+        return {"added": True, "via": "local", "key": info, "title": item["title"],
+                "note": "added to the running Zotero desktop library; syncs to your other devices"}
+    attempts["local"] = info
+
+    # 2) web API fallback (only if configured)
+    if config.ZOTERO_API_KEY and config.ZOTERO_USER_ID:
+        ok, info = _post_items(
             f"https://api.zotero.org/users/{config.ZOTERO_USER_ID}/items",
-            json=[item],
-            headers={"Zotero-API-Key": config.ZOTERO_API_KEY, "Zotero-API-Version": "3"},
-            timeout=_TIMEOUT,
+            item, {"Zotero-API-Key": config.ZOTERO_API_KEY},
         )
-        r.raise_for_status()
-        body = r.json()
-        if body.get("successful"):
-            key = next(iter(body["successful"].values()))["key"]
-            return {"added": True, "key": key, "title": item["title"],
-                    "note": "syncs to the desktop library on next Zotero sync"}
-        return {"added": False, "response": body}
-    except httpx.HTTPError as e:
-        return {"error": f"add_by_doi failed: {e}"}
+        if ok:
+            return {"added": True, "via": "web", "key": info, "title": item["title"],
+                    "note": "added via the Zotero web API; syncs to the desktop on next sync"}
+        attempts["web"] = info
+    else:
+        attempts["web"] = "not configured (no ZOTERO_API_KEY/ZOTERO_USER_ID)"
+
+    return {
+        "added": False,
+        "title": item["title"],
+        "error": "could not add to Zotero. Local write failed and the web API "
+                 "is unavailable/unconfigured — add the paper manually, or set "
+                 "ZOTERO_API_KEY + ZOTERO_USER_ID to enable the web fallback.",
+        "attempts": attempts,
+    }

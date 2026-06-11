@@ -73,11 +73,14 @@ That's it — tokens now accrue per task automatically. (Skip this if you don't
 care about usage; everything else works without it.)
 
 ### 1e. Optional integrations
-- **Zotero** (for paper grounding / add-by-DOI): in Zotero, enable
-  *Settings → Advanced → "Allow other applications on this computer to
-  communicate with Zotero."* For `zotero_add_doi`, also make an API key at
-  zotero.org → Settings → Security and set `ZOTERO_API_KEY` / `ZOTERO_USER_ID`
-  in `.env`.
+- **Zotero** (for paper grounding): in Zotero, enable *Settings → Advanced →
+  "Allow other applications on this computer to communicate with Zotero."*
+  Reading/grounding needs **no API key** (it uses the local API at `users/0`).
+  `zotero_add_doi` tries the local library first, but most Zotero builds make
+  the local API **read-only**, so add-by-DOI usually falls back to the web API
+  — set `ZOTERO_API_KEY` + `ZOTERO_USER_ID` (zotero.org → Settings → Security)
+  to enable that, or just add papers manually (the agent will tell you clearly
+  if a DOI add couldn't go through).
 - **Anki** (retention — the P3 layer): install Anki + the AnkiConnect add-on
   `2055492159`, keep Anki running. Cards sync to your phone via AnkiWeb; you
   review in AnkiDroid/AnkiMobile. (Not required for the core loop.)
