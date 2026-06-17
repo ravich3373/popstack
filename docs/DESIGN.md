@@ -11,8 +11,7 @@
 > Every tool and acronym is glossed on first use. If a section assumes
 > something unstated, treat that as a bug in the doc.
 
-- **Status:** P1 (execution engine) implemented; P2–P6 designed below ·
-  **Last updated:** 2026-06-10
+- **Status:** P1 (execution engine) implemented; P2–P6 designed below.
 - **Vocabulary** (goal, subgoal, subtask, draw, ground, park, recall card…) is
   defined in [PRD §2](PRD.md#2-words-this-document-uses) and used here without
   re-definition.
@@ -39,7 +38,7 @@ components around the existing engine:
    Engine (BUILT): draw the next leaf (resume-biased, dep-aware),  └─ Subgoal        │ in vault
    park (if-then), complete, Today.md     ADR-009/010/011          (tree, in vault) ─┘
         │
-        ▼  Grounder: search ALL vaults (kb/coding/formalisms) + Zotero ──► brief + connections
+        ▼  Grounder: search ALL your vaults + Zotero ──► brief + connections
         │   (grounding.py searches all POPSTACK_VAULTS; flags cross-vault concepts)
         ▼  Retainer: understood → recall cards (Anki, byproduct) + generative drills  ADR-012
         ▼  Connector: surface cross-vault links for the current material           (P4)

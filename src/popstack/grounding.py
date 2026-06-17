@@ -93,7 +93,7 @@ def _search_one(term: str, vault: Path, limit: int) -> list[dict[str, Any]]:
 
 
 def vault_search(term: str, limit: int = 10) -> list[dict[str, Any]]:
-    """Search every configured vault (kb/coding/formalisms/…). Each hit is
+    """Search every configured vault. Each hit is
     tagged with the `vault` it came from, up to `limit` hits per vault."""
     out: list[dict[str, Any]] = []
     seen: set[Path] = set()

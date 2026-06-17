@@ -12,7 +12,7 @@
 - **Status:** v2.0 — **scope pivot**. v1 was a generic random task stack; this
   rewrites the product around its real purpose: helping the user deeply
   understand and *retain* technical material. The v1 task engine survives as
-  one component (execution). · **Owner:** @ravich3373 · **Updated:** 2026-06-10
+  one component (execution).
 
 ## 1. The problem
 
@@ -20,8 +20,7 @@ The user is a software/ML engineer who learns by going deep: understanding the
 math, experiments, and results of ML and CS papers (compilers, distributed
 systems, databases); understanding real codebases; learning languages;
 practicing algorithms and system design. The evidence of this is already on
-disk — **~4,358 notes** across three Obsidian vaults (`kb`, `coding`,
-`formalisms`) and **~844 items in Zotero**.
+disk — a large body of notes across several Obsidian vaults and a Zotero library.
 
 Three failures sit on top of that effort:
 
@@ -29,14 +28,14 @@ Three failures sit on top of that effort:
    hard part is turning it into a concrete plan — what to understand first,
    what depends on what, what "done" means. Today that planning is ad hoc and
    often skipped, so big sources stall.
-2. **No retention.** This is the costly one. Across 4,358 notes there is **zero
+2. **No retention.** This is the costly one. Across all those notes there is **zero
    spaced repetition** — Anki isn't even installed. Knowledge is *captured and
-   re-read* (the `_Weekly Review.md` Dataview notes) but not *drilled*, so it
+   re-read* but not *drilled*, so it
    decays. Re-reading feels like learning and mostly isn't.
-3. **No connection.** The three vaults are complementary — `coding` is *how*,
-   `formalisms` is *why*, `kb` is *systems/practice* — and densely wikilinked
-   internally, but cross-vault links (a paper's math ↔ the `formalisms`
-   theorem that grounds it ↔ the `coding` implementation) are made by hand, if
+3. **No connection.** The vaults are complementary — one for implementation,
+   one for theory, one for systems/practice — and densely wikilinked
+   internally, but cross-vault links (a paper's math ↔ the
+   theorem that grounds it ↔ the implementation) are made by hand, if
    at all. The connective tissue that turns notes into understanding is missing.
 
 popstack closes the loop: **decompose a source into an editable plan → drive
@@ -54,22 +53,21 @@ stick (Anki + connections) → fold newly-authored docs back into the KB.**
 | **plan** | the goal → subgoal → subtask tree the agent proposes and the user **edits** (dependencies allowed) |
 | **the pool** | the small set of subtasks currently in play (active), drawn from across the user's goals |
 | **draw** (was "pop") | "what should I work on now" — the agent proposes one subtask, biased to *continue the current thread*, never a blind random jump (see [DECISIONS](DECISIONS.md) ADR-009) |
-| **ground** | gather what the user already knows about a subtask — relevant notes across `kb`/`coding`/`formalisms` and papers in Zotero — and present it as a brief |
+| **ground** | gather what the user already knows about a subtask — relevant notes across your vaults and papers in Zotero — and present it as a brief |
 | **connection** | a non-obvious link the agent surfaces between the current material and an existing note (often cross-vault) |
 | **recall card** | an Anki flashcard generated from something just understood; reviewed in Anki's own apps |
-| **ingest** | turn a large doc the user authored (e.g. the `ravi_docs` architecture KBs) into atomic KB notes + a MOC + recall cards, in their existing conventions |
+| **ingest** | turn a large doc the user authored (e.g. a long architecture write-up) into atomic KB notes + a MOC + recall cards, in their existing conventions |
 | **park** | set a subtask aside *with a written next action* (an if-then plan), so resuming starts warm |
 
 ## 3. Who it's for, on what
 
 One user; the ecosystem is already in place:
 
-- **Obsidian vaults** — `kb` (systems/ML/DSA, 1,938 notes), `coding` (interview
-  prep, language primers, codebase deep-dives, 1,706), `formalisms` (math/ML
-  theory, proof-heavy, 714). Conventions: YAML frontmatter, **wikilinks as
+- **Obsidian vaults** — several, organized by theme (e.g. systems/ML, coding & interview prep,
+  math/ML theory). Conventions: YAML frontmatter, **wikilinks as
   primary navigation**, MOC/index notes, atomic-note + callout style. The agent
   must **fit these conventions, not impose new ones** (NFR-1).
-- **Zotero** — ~844 items, ML/systems/theory-heavy; the source library.
+- **Zotero** — an ML/systems/theory-heavy library; the source of papers.
 - **Anki** — *not installed yet*; the retention layer to stand up (P3).
 - **Devices** — laptop (deep work, Claude Code); phone (capture, light review,
   Anki); an always-on node hosting the agent.
@@ -87,10 +85,10 @@ already know diffusion policies, so you delete that subgoal and add *"compare
 to diffusion-policy baselines."*
 
 You say **"what now."** It **draws** the first math subtask and **grounds** it:
-it surfaces your `formalisms` notes on ODEs/optimal transport, the
+it surfaces your notes on ODEs/optimal transport, the
 diffusion-policy paper in Zotero, and flags a **connection** — *"this loss is
 the continuous-time limit of the DDPM objective in your
-`formalisms/quantization` notes."* You work a focused block.
+quantization notes."* You work a focused block.
 
 You understood the flow-matching derivation, so the agent proposes two **recall
 cards** ("Why is flow matching simulation-free at training time?") into Anki.
@@ -141,7 +139,7 @@ The *how* for each is in [DESIGN.md](DESIGN.md).
 | FR-2 | Track goals and their trees; show progress (subtasks done / understood per subgoal) | 🔜 P2 |
 | FR-3 | Hand over the next sensible subtask on request — biased to continue the current goal/thread or an unblocked dependency, **not** a blind random jump across unrelated goals; the user may decline | ⚙️ engine built (draw); bias logic 🔜 P2 |
 | FR-4 | Refuse to park a subtask without a specific **if-then** next action; record it on the subtask | ✅ (park; tighten to if-then) |
-| FR-5 | Ground a subtask: search **all** vaults (`kb`/`coding`/`formalisms`) and Zotero, returning a brief | ⚙️ single-vault search built; multi-vault 🔜 P2 |
+| FR-5 | Ground a subtask: search **all** your vaults and Zotero, returning a brief | ⚙️ single-vault search built; multi-vault 🔜 P2 |
 | FR-6 | Generate Anki cards from understood material; report due counts; **never** host reviews (Anki's apps do) | ✅ card creation; drill flow 🔜 P3 |
 | FR-7 | **Maintain the cross-tool link graph itself** (Obsidian↔Zotero↔Anki) — create the wikilinks, the note↔paper links, and the card↔note↔paper triangle. The user never hand-wires a link (ADR-015) | 🔜 P4 |
 | FR-8 | Create new KB notes that match existing conventions (frontmatter, wikilinks, MOC placement, callouts) | 🔜 P3 |

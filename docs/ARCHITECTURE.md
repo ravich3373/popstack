@@ -5,8 +5,7 @@
 > processes exist, where they run, what protocol connects them, and — bluntly —
 > **what actually runs today vs. what is still just code or just a design.**
 
-- **Status:** P1 engine code complete; **nothing deployed as a running service
-  yet.** · Updated 2026-06-10
+- **Status:** implementation status is in [DESIGN](DESIGN.md) / [PRD phases](PRD.md#9-phases). Per-machine runtime/deployment state is operator-local, not committed.
 
 ## 1. The one idea to hold onto: brain ≠ tools ≠ state
 
@@ -130,13 +129,13 @@ phone: AnkiDroid ← sync ← AnkiWeb → you review, offline, in bed
   (no popstack, no brain, no network needed during review)
 ```
 
-## 6. CURRENT STATE vs TARGET — read this one
+## 6. Implementation status (codebase, not your machine)
 
 | Capability | Today | To make it real |
 |-----------|-------|-----------------|
 | P2 engine (decompose, draw, goals) | ✅ **code + tests on GitHub** | — |
-| Use it on the **laptop** | ⚠️ **not until you run one command** | `claude mcp add popstack --scope user -- uv --directory ~/Documents/repos/popstack run popstack`, then talk to it in a Claude Code session |
-| Grounding across all 3 vaults + cross-vault connections | ✅ **code + tests** | set `POPSTACK_VAULTS` to your vaults |
+| Use it on the **laptop** | ⚠️ **not until you run one command** | `claude mcp add popstack --scope user -- uv --directory <repo> run popstack`, then talk to it in a Claude Code session |
+| Grounding across your configured vaults + cross-vault connections | ✅ **code + tests** | set `POPSTACK_VAULTS` to your vaults |
 | Codebase support (clone, map, decompose) | ✅ **code + tests** | `clone_repo`/`map_repo`; the agent reads the code with its own tools |
 | Writing notes into the KB (snippets, MOCs, links) | ✅ **code + tests** (quarantine folder, preview-first, no-clobber) | `write_note`/`append_snippet`/`add_to_moc`; set `POPSTACK_NOTES_*` |
 | Retention / Anki on phone | ❌ Anki not installed | install Anki + AnkiConnect on a node; set up AnkiDroid + AnkiWeb (P3) |

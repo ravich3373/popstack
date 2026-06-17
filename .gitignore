@@ -7,3 +7,6 @@ dist/
 
 # personal Anki decks — never commit (generated study artifacts)
 anki/
+
+# operator/status notes — popstack talking to YOU about YOUR setup; never committed
+local/

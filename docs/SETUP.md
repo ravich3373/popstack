@@ -5,9 +5,7 @@
 > [ARCHITECTURE.md](ARCHITECTURE.md); phone access is in
 > [PORTABILITY.md](PORTABILITY.md) (not built yet).
 
-**Current state (2026-06-10):** P1+P2 are code-complete and tested; **nothing
-is deployed.** The laptop path below is the only working way to use it today.
-Phone access does not exist yet.
+The laptop path below is the only working way to use it today; phone access is designed but not built (see [PORTABILITY.md](PORTABILITY.md)).
 
 ---
 
@@ -33,15 +31,14 @@ uv run pytest -q        # sanity: should be all green
 ```
 
 ### 1b. Configure `.env`
-A `.env` is already created for you, pointing at your `kb`/`coding`/`formalisms`
-vaults with a generated auth token. Check it:
+Create a `.env` from `.env.example`, pointing at your own vaults, with a generated auth token. Check it:
 ```bash
 cat .env
 ```
 Key settings:
-- `POPSTACK_VAULT` — where the task **Stack** lives (default `~/Documents/kb`).
+- `POPSTACK_VAULT` — where the task **Stack** lives (a vault folder you choose).
 - `POPSTACK_VAULTS` — the knowledge vaults **grounding** searches
-  (`kb,coding,formalisms`). The Stack vault is always included.
+  (comma-separated paths to your vaults). The Stack vault is always included.
 - `POPSTACK_AUTH_TOKEN` — only used for the HTTP transport (phone, later).
 
 ### 1c. Register popstack with Claude Code (the one command)
@@ -98,7 +95,7 @@ calls popstack's tools. A typical learning session:
 | "Show me the plan." | `show_plan(goal_id)` |
 | "Tweak it — I already know diffusion policies, drop that subgoal; add 'compare to baselines'." | `complete_task`/`move_task`/`capture_task` |
 | "What should I work on now?" | `draw_next` — the next subtask, biased to continue this goal |
-| "Ground it." | `ground_task` — relevant notes across kb/coding/formalisms + Zotero, with cross-vault connections |
+| "Ground it." | `ground_task` — relevant notes across your vaults + Zotero, with cross-vault connections |
 | "Learn the llama.cpp codebase — here's the GitHub URL." | `clone_repo` → `map_repo` → `decompose_source(kind="codebase", …)` |
 | "Add this function to my Sampler note." | `append_snippet(note, code, lang, source="repo/file:line")` (preview first) |
 | "Make a note for flow matching, link it to DDPM and the paper." | `write_note(title, body, related, source)` (preview first) |

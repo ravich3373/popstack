@@ -3,7 +3,7 @@ maintain cross-tool links (ADR-015). The *agent* decides the content and which
 conventions apply (it reads example notes first via grounding); this module is
 the safe, durable WRITE primitive + the link bookkeeping.
 
-Safety (this touches the user's real ~4,358-note vault):
+Safety (this touches the user's real vault):
 - New notes land in a quarantine folder (config.NOTES_DIR) by default — never
   silently mixed into existing folders.
 - Writes never clobber: creating an existing note errors unless overwrite=True.

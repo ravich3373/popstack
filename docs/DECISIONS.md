@@ -138,8 +138,7 @@ floor, not an answer; ADR to be superseded by the OAuth implementation.
 **Status:** accepted · 2026-06-10 · supersedes the v1 product framing
 
 **Context.** v1 framed the product as a random task stack for generic
-productivity. The user's actual need (clarified 2026-06-10, and corroborated
-by ~4,358 vault notes + ~844 Zotero items with *zero* spaced repetition): take
+productivity. The user's actual need (corroborated by a large note collection + a Zotero library with *zero* spaced repetition): take
 a hard technical source — an ML/CS paper, a codebase, a language, an algorithm
 family, a system-design topic — and deeply understand *and retain* it. The
 prior PRD critique had flagged "two products glued by a slogan (100x
@@ -223,7 +222,7 @@ lever) instead of nagging. Cost: more lifecycle states — see DESIGN §2.
 **Status:** accepted · 2026-06-10 · extends ADR-006
 
 **Context.** The biggest gap in the user's setup is **zero spaced repetition**
-across 4,358 notes. Retention is where "understand deeply" becomes "still know
+across a large note collection. Retention is where "understand deeply" becomes "still know
 it in 6 months." Showing notes (restudy) is the weak form; making the user
 *retrieve* (the testing effect, Bjork's desirable difficulties) is the strong
 form.

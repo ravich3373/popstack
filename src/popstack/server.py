@@ -200,7 +200,7 @@ def vault_layout(vault: str | None = None) -> dict:
     """Discover a vault's existing organization — folder tree (with note counts)
     and MOC/index notes. Call this BEFORE write_note to file into the right
     existing folder + MOC, like zotero_collections/anki_decks (ADR-016).
-    `vault` is a name (kb/coding/formalisms) or path; omit for all."""
+    `vault` is a name or path; omit for all."""
     return notes_mod.vault_layout(vault)
 
 

@@ -35,7 +35,7 @@ if VAULT_PATH not in VAULTS:
 
 # Where the agent writes NEW notes. Defaults to a clearly-marked quarantine
 # folder in the primary vault so agent-authored notes never silently mix into
-# your 4,358-note KB until you file them. Set NOTES_VAULT to write into one of
+# your KB until you file them. Set NOTES_VAULT to write into one of
 # your knowledge vaults; NOTES_DIR is the subfolder.
 NOTES_VAULT: Path = _env_path("POPSTACK_NOTES_VAULT", str(VAULT_PATH))
 NOTES_DIR: str = os.environ.get("POPSTACK_NOTES_DIR", "popstack")
