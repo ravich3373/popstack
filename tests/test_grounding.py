@@ -44,8 +44,8 @@ def test_vault_search_empty_when_vault_missing(tmp_path, monkeypatch):
 
 def test_grounding_spans_vaults_and_flags_cross_vault(tmp_path, monkeypatch):
     # a concept living in two vaults is a cross-vault connection candidate
-    theory = tmp_path / "formalisms"
-    code = tmp_path / "coding"
+    theory = tmp_path / "theory"
+    code = tmp_path / "code"
     theory.mkdir(); code.mkdir()
     (theory / "flow.md").write_text("flow matching is the continuous limit\n", encoding="utf-8")
     (code / "sampler.md").write_text("flow matching sampler implementation\n", encoding="utf-8")
@@ -54,6 +54,6 @@ def test_grounding_spans_vaults_and_flags_cross_vault(tmp_path, monkeypatch):
 
     res = grounding.ground({"id": "t1", "title": "understand flow matching", "body": "", "tags": []})
     vaults_hit = {n["vault"] for n in res["vault_notes"]}
-    assert {"formalisms", "coding"} <= vaults_hit
-    assert any(c["term"] == "matching" and set(c["vaults"]) == {"coding", "formalisms"}
+    assert {"theory", "code"} <= vaults_hit
+    assert any(c["term"] == "matching" and set(c["vaults"]) == {"code", "theory"}
                for c in res["cross_vault_connections"])

@@ -14,7 +14,7 @@ def _env_path(name: str, default: str) -> Path:
 
 # Where the stack lives. The vault is just a folder of markdown — Obsidian
 # renders it on every device, sync is whatever the vault already uses.
-VAULT_PATH: Path = _env_path("POPSTACK_VAULT", "~/Documents/kb")
+VAULT_PATH: Path = _env_path("POPSTACK_VAULT", "~/Documents/vault")
 STACK_DIRNAME: str = os.environ.get("POPSTACK_DIR", "Stack")
 
 
@@ -26,7 +26,7 @@ def _env_paths(name: str, default: list[Path]) -> list[Path]:
 
 
 # Knowledge vaults grounding searches (the user has several complementary
-# vaults: kb / coding / formalisms). Set POPSTACK_VAULTS as a comma-separated
+# vaults). Set POPSTACK_VAULTS as a comma-separated
 # list; the Stack vault is always included. Grounding labels each hit with the
 # vault it came from, which is what makes cross-vault connections possible.
 VAULTS: list[Path] = _env_paths("POPSTACK_VAULTS", [VAULT_PATH])

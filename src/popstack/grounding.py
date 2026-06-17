@@ -136,7 +136,7 @@ def ground(task: dict[str, Any]) -> dict[str, Any]:
     )[:10]
 
     # Concepts that appear in 2+ vaults are cross-vault connection candidates
-    # (e.g. a paper's math in `formalisms` + its implementation in `coding`).
+    # (e.g. a paper's math in one vault + its implementation in another).
     # The substrate for agent-maintained linking (FR-7 / ADR-015).
     cross_vault = sorted(
         ({"term": t, "vaults": sorted(vs)} for t, vs in term_vaults.items() if len(vs) >= 2),
