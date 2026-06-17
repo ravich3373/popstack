@@ -210,7 +210,7 @@ Read this next to the source; the largest file (stack.py) is ~310 lines.
 | `grounding.py` | task → search terms (wikilinks first, then tags, then title words) → hits across **all configured vaults** (`POPSTACK_VAULTS`), each tagged with its vault, merged with Zotero; flags concepts hitting 2+ vaults as **cross-vault connection candidates** (FR-7 substrate) | `ripgrep --json` when installed, pure-python fallback; returns structured hits — the *model* writes the prose brief |
 | `zotero.py` | paper library client | reads via Zotero's local HTTP API; writes (add-by-DOI) via the zotero.org web API using Crossref metadata |
 | `anki.py` | flashcard client (AnkiConnect, the standard Anki automation add-on) | absent Anki ⇒ `{available: false, error: how-to-fix}`, never an exception |
-| `server.py` | exposes 13 tools over MCP; both transports; bearer-auth middleware | tool docstrings are the model's usage manual — write them as instructions |
+| `server.py` | exposes 29 tools over MCP; both transports; bearer-auth middleware | tool docstrings are the model's usage manual — write them as instructions |
 | `today.py` | renders `Today.md` (top-3 by weight, overdue, stale, cards due) | run on a schedule (launchd/cron) |
 
 The deliberate seam: `stack.py` is importable without MCP. A future P3 app
@@ -264,14 +264,14 @@ logic of its own.
 
 ## 8. Testing
 
-- `tests/test_stack.py` — 11 unit tests on the engine: capture/overflow,
+- `tests/test_stack.py` — 24 unit tests on the engine: capture/overflow,
   statistical weighting (300 seeded draws), cooldown exclusion, the park
   contract, completion moves, pool caps, health flags. Runs on a temp dir;
   no network.
 - The integration clients (Zotero/Anki) are thin HTTP wrappers verified by
   the documented smoke test; unit-mocking them would mostly test the mocks.
   Revisit if logic accumulates there.
-- Smoke checklist (README): 13 tools registered; HTTP auth 401/200; full
+- Smoke checklist (README): 29 tools registered; HTTP auth 401/200; full
   capture → pop → park → Today.md flow.
 
 ## 9. Future work

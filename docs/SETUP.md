@@ -110,7 +110,7 @@ park/complete → promote.**
 
 ---
 
-## 3. Tool reference (25 tools)
+## 3. Tool reference (29 tools)
 
 **Planning** — `list_source_templates`, `decompose_source`, `show_plan`,
 `list_goals`, `promote_subgoal`

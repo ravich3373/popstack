@@ -140,8 +140,8 @@ puts it on your phone. Top-3 by weight, overdue, stale (3+ pushes), Anki due.
 
 After `uv sync`, a quick end-to-end sanity check:
 
-- `uv run pytest -q` — 30 tests green.
-- 13 tools registered: `uv run python -c "import asyncio; from popstack.server import mcp; print(len(asyncio.run(mcp.list_tools())))"`
+- `uv run pytest -q` — 79 tests green.
+- 29 tools registered: `uv run python -c "import asyncio; from popstack.server import mcp; print(len(asyncio.run(mcp.list_tools())))"`
 - HTTP fails closed: `POPSTACK_AUTH_TOKEN= uv run popstack --http` refuses to start.
 - Full loop (against a throwaway vault):
   `POPSTACK_VAULT=$(mktemp -d) uv run python -c "from popstack.stack import Stack; s=Stack(); t=s.capture('demo'); p=s.pop(); print(s.park(p['id'],'next step')); print(s.complete(p['id']))"`
