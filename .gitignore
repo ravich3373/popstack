@@ -4,3 +4,6 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 dist/
+
+# personal Anki decks — never commit (generated study artifacts)
+anki/
