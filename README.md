@@ -22,8 +22,8 @@ card creation**, **Zotero** search/add, **codebase** clone/map, and
 > real purpose became clear — see [PRD](docs/PRD.md) and ADR-008. The engine
 > survives as one component.
 
-**Status:** usable on the laptop once you register it with
-Claude Code (see [Use from Claude Code](#use-from-claude-code-laptop-stdio));
+**Status:** usable locally once you register it with
+Claude Code (see [Use from Claude Code](#use-from-claude-code-local-stdio));
 **phone access is designed, not built.** (Per-machine deployment state is
 operator-local — see `local/`, gitignored — not tracked in this repo.)
 
@@ -65,7 +65,7 @@ uv run pytest          # should be green
   Anki running. Cards sync to your phone via AnkiWeb; reviews happen in
   AnkiMobile/AnkiDroid.
 
-## Use from Claude Code (laptop, stdio)
+## Use from Claude Code (local, stdio)
 
 ```bash
 claude mcp add popstack --scope user -- uv --directory ~/Documents/repos/popstack run popstack

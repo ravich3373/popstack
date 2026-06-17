@@ -69,7 +69,7 @@ One user; the ecosystem is already in place:
   must **fit these conventions, not impose new ones** (NFR-1).
 - **Zotero** — an ML/systems/theory-heavy library; the source of papers.
 - **Anki** — *not installed yet*; the retention layer to stand up (P3).
-- **Devices** — laptop (deep work, Claude Code); phone (capture, light review,
+- **Devices** — a local machine (deep work, Claude Code); phone (capture, light review,
   Anki); an always-on node hosting the agent.
 - **Languages in play** — Python, C++, Go, Rust, Bazel, TypeScript.
 

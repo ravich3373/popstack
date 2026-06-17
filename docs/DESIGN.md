@@ -67,7 +67,7 @@ apps already in daily use (Claude's apps, Obsidian, Anki's apps).
 popstack itself is an **MCP server**. MCP (Model Context Protocol) is the
 standard interface through which Claude applications discover and call
 external tools — one server, written once, is usable from Claude Code on
-the laptop *and* the Claude phone app, with no popstack UI code at all.
+any local machine *and* the Claude phone app, with no popstack UI code at all.
 
 ```
 ┌─ always-on machine ────────────────────────────────────────────┐
@@ -84,7 +84,7 @@ the laptop *and* the Claude phone app, with no popstack UI code at all.
 └───────┬──────────────────────────────┬─────────────────────────┘
         │ stdio                        │ Tailscale Funnel (public HTTPS)
         ▼                              ▼
-  Claude Code (laptop)         claude.ai connector
+  Claude Code (local)          claude.ai connector
                                → Claude iOS / Android / web
         plus, via the vault's own sync:
   Obsidian (any device)  — renders Stack/ files and Today.md
@@ -93,7 +93,7 @@ the laptop *and* the Claude phone app, with no popstack UI code at all.
 
 Transports, glossed:
 - **stdio** — the Claude client launches the server as a subprocess and
-  talks over stdin/stdout. Zero network exposure; laptop only.
+  talks over stdin/stdout. Zero network exposure; local only.
 - **HTTP** (`--http`) — a normal web endpoint on port 8444, for remote use.
   **Tailscale Funnel** is Tailscale's feature that publishes a local port
   at a public HTTPS URL — needed because the claude.ai connector is called
@@ -219,7 +219,7 @@ logic of its own.
 
 ## 5. Transports & security
 
-- **stdio (laptop):** trust boundary is the OS user; no auth.
+- **stdio (local):** trust boundary is the OS user; no auth.
 - **HTTP + Funnel:** Funnel makes the endpoint **public internet**.
   Defense, in order:
   1. **Bearer token** — a single shared secret sent as an HTTP header

@@ -15,8 +15,8 @@ together:
 | Role | What it is | Where it runs | Who provides it |
 |------|-----------|---------------|-----------------|
 | **Brain** | the Claude model that reasons, decomposes, drills | **Anthropic's cloud**, always remote | Anthropic |
-| **Tools + state** | popstack: the goal trees, draw, grounding, Anki/Zotero clients, your task markdown | a machine *you* run (laptop now; an always-on node later) | this repo |
-| **Surface** | the thing you actually touch — a chat client or app | laptop terminal / phone apps | Claude Code, claude.ai app, Obsidian, Anki |
+| **Tools + state** | popstack: the goal trees, draw, grounding, Anki/Zotero clients, your task markdown | a machine *you* run (locally now; an always-on node later) | this repo |
+| **Surface** | the thing you actually touch — a chat client or app | terminal / phone apps | Claude Code, claude.ai app, Obsidian, Anki |
 
 **"Access the agent on my phone"** therefore means: run a *Claude client*
 (brain-connected) on or reachable from your phone, wired to popstack's tools
@@ -58,7 +58,7 @@ is markdown files in `<vault>/Stack/`. No database, no daemon required.
 └───────▲───────────────────────────────────────▲─────────────────┘
         │ HTTPS (model API)                      │ HTTPS
         │                                        │
-┌─ YOUR LAPTOP ──────────────┐     ┌─ ALWAYS-ON NODE (future) ─────────────┐
+┌─ YOUR MACHINE ─────────────┐     ┌─ ALWAYS-ON NODE (future) ─────────────┐
 │ Claude Code (surface+brain │     │ popstack HTTP server                  │
 │   connection)              │     │ Anki + AnkiConnect                    │
 │   │ MCP over stdio         │     │ Zotero (local API)                    │
@@ -78,7 +78,7 @@ is markdown files in `<vault>/Stack/`. No database, no daemon required.
 Two ways popstack is reached, by transport:
 
 - **stdio** — the Claude client launches popstack as a child process and talks
-  over stdin/stdout. Local only, no network, no auth. *This is the laptop path.*
+  over stdin/stdout. Local only, no network, no auth. *This is the local path.*
 - **HTTP** — popstack runs as a web server (`--http`); a remote Claude surface
   calls it over the network. For *your* devices this rides the **tailnet**
   (private, no public exposure, ADR-014); a public Funnel + OAuth is only needed
@@ -91,10 +91,10 @@ distinct connection mechanisms, and you use each once:
 
 | Mechanism | Configures | Scope | You do it… |
 |-----------|-----------|-------|-----------|
-| `claude mcp add` | the **Claude Code CLI** on one machine | per-machine that runs Claude Code | on your **laptop, once** |
+| `claude mcp add` | the **Claude Code CLI** on one machine | per-machine that runs Claude Code | on your **machine, once** |
 | **claude.ai custom connector** | your **claude.ai account** | every device you're signed into | on your **account, once** (when the node is live) |
 
-So: one `claude mcp add` on the laptop today; later, one connector setup pointing
+So: one `claude mcp add` on your machine today; later, one connector setup pointing
 at your node (over Tailscale) that your phone, web, and desktop all inherit. The
 phone never runs `claude mcp add` — there is no Claude Code on it. Configuration
 is per-machine-running-Claude-Code or per-account, **never per-device-you-use.**
@@ -104,7 +104,7 @@ is per-machine-running-Claude-Code or per-account, **never per-device-you-use.**
 | From → To | Protocol | Notes |
 |-----------|----------|-------|
 | Claude surface → Brain | HTTPS (model API) | always remote |
-| Claude Code → popstack | **MCP / stdio** | laptop, local subprocess |
+| Claude Code → popstack | **MCP / stdio** | local subprocess |
 | claude.ai / PWA → popstack | **MCP / HTTP** over Tailscale | private; Funnel+OAuth only for claude.ai cloud |
 | popstack → vault | filesystem | markdown read/write |
 | popstack → Zotero | HTTP `localhost:23119` | local API |
@@ -114,7 +114,7 @@ is per-machine-running-Claude-Code or per-account, **never per-device-you-use.**
 
 ## 5. Two request flows
 
-**A. Decompose a paper (laptop, works once registered):**
+**A. Decompose a paper (local, works once registered):**
 ```
 you (Claude Code): "decompose the pi0 paper, it's in Zotero"
   → brain decides to call decompose_source(kind="paper", source=...)
@@ -134,7 +134,7 @@ phone: AnkiDroid ← sync ← AnkiWeb → you review, offline, in bed
 | Capability | Today | To make it real |
 |-----------|-------|-----------------|
 | P2 engine (decompose, draw, goals) | ✅ **code + tests on GitHub** | — |
-| Use it on the **laptop** | ⚠️ **not until you run one command** | `claude mcp add popstack --scope user -- uv --directory <repo> run popstack`, then talk to it in a Claude Code session |
+| Use it **locally** | ⚠️ **not until you run one command** | `claude mcp add popstack --scope user -- uv --directory <repo> run popstack`, then talk to it in a Claude Code session |
 | Grounding across your configured vaults + cross-vault connections | ✅ **code + tests** | set `POPSTACK_VAULTS` to your vaults |
 | Codebase support (clone, map, decompose) | ✅ **code + tests** | `clone_repo`/`map_repo`; the agent reads the code with its own tools |
 | Writing notes into the KB (snippets, MOCs, links) | ✅ **code + tests** (quarantine folder, preview-first, no-clobber) | `write_note`/`append_snippet`/`add_to_moc`; set `POPSTACK_NOTES_*` |
@@ -143,7 +143,7 @@ phone: AnkiDroid ← sync ← AnkiWeb → you review, offline, in bed
 | Anything running as a service | ❌ **nothing is deployed** | popstack only runs when a client launches it (stdio) or you run `--http` |
 
 **Plainly:** right now this is a tested codebase on GitHub. The first time you
-can use it at all is on your laptop after the `claude mcp add` command. Phone
+can use it at all is on your machine after the `claude mcp add` command. Phone
 access is several build steps (a node, tailnet serving, a phone surface) away —
 all designed in [PORTABILITY.md](PORTABILITY.md), none built.
 
@@ -151,7 +151,7 @@ all designed in [PORTABILITY.md](PORTABILITY.md), none built.
 
 In dependency order:
 
-1. **Laptop usable** — `claude mcp add …` (you, 1 min). Validates the loop.
+1. **Local use** — `claude mcp add …` (you, 1 min). Validates the loop.
 2. **A node** — pick an always-on machine (old laptop / Mac mini); put the vault,
    Zotero, and Anki on it; run `popstack --http`; join it to your tailnet.
 3. **Recall on phone** — install Anki + AnkiConnect on the node, AnkiDroid +

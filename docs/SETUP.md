@@ -1,11 +1,11 @@
 # Setup & Usage
 
 > The one place that walks you from a fresh clone to actually using popstack on
-> your laptop, including token-usage tracking. Runtime concepts are in
+> your machine, including token-usage tracking. Runtime concepts are in
 > [ARCHITECTURE.md](ARCHITECTURE.md); phone access is in
 > [PORTABILITY.md](PORTABILITY.md) (not built yet).
 
-The laptop path below is the only working way to use it today; phone access is designed but not built (see [PORTABILITY.md](PORTABILITY.md)).
+The local path below is the only working way to use it today; phone access is designed but not built (see [PORTABILITY.md](PORTABILITY.md)).
 
 ---
 
@@ -21,7 +21,7 @@ The laptop path below is the only working way to use it today; phone access is d
 
 ---
 
-## 1. One-time setup (laptop)
+## 1. One-time setup (local)
 
 ### 1a. Install dependencies
 ```bash
@@ -45,7 +45,7 @@ Key settings:
 ```bash
 claude mcp add popstack --scope user -- uv --directory ~/Documents/repos/popstack run popstack
 ```
-- `--scope user` = available in **all** Claude Code sessions on this laptop.
+- `--scope user` = available in **all** Claude Code sessions on this machine.
 - This is per-machine, **not** per-device — see [ARCHITECTURE §3b](ARCHITECTURE.md#3b-do-i-configure-this-on-every-device-no).
 - Verify: `claude mcp list` should show `popstack`. Undo anytime with
   `claude mcp remove popstack`.
