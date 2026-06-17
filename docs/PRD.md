@@ -169,7 +169,7 @@ The *how* for each is in [DESIGN.md](DESIGN.md).
 
 ## 7. Success metrics (review monthly — outcomes, not activity)
 
-Deliberately *not* "pops/week" or streaks (those reward time-in-tool, the
+Deliberately *not* "draws/week" or streaks (those reward time-in-tool, the
 abandonment trap). Measure value:
 
 - **Retention** — Anki cards created through popstack that reach "mature," and

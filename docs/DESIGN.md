@@ -146,7 +146,7 @@ narrative, which is exactly what Obsidian then renders.
 ```
  capture ──► active ──(pool full at capture? → reservoir)
                 │
-                │ pop            (task is "in hand"; file unchanged
+                │ draw           (task is "in hand"; file unchanged
                 ▼                 except a last_popped stamp)
             in hand ──────────► complete ──► moved to done/
                 │
@@ -158,14 +158,14 @@ narrative, which is exactly what Obsidian then renders.
  reservoir ◄── shelve / promote ──► active     (explicit moves, cap enforced)
 ```
 
-## 3. Pop algorithm
+## 3. Draw algorithm
 
 **In words first.** Every eligible task holds raffle tickets. Existing at
 all buys 1 ticket — everything stays drawable. A deadline within two weeks
 buys up to 12 more, the closer the more, maxed out once overdue. Priority
 buys 6 (high) or 3 (medium). Dust buys up to 2 more, accumulating over a
 year and then capped — neglected tasks get steadily louder, but never
-deafening. A pop draws one ticket. Tasks still in a park-cooldown hold no
+deafening. A draw takes one ticket (the engine method is named `pop()`). Tasks still in a park-cooldown hold no
 tickets at all this round.
 
 The formula:
@@ -196,7 +196,7 @@ problem. Two deliberate departures, recorded in ADR-002/003:
   (PRD G2's "nothing buried forever"), but one ancient task must not drown
   the pool.
 
-The park-cooldown (default 4 h) is what prevents pop→park→pop ping-pong of
+The park-cooldown (default 4 h) is what prevents draw→park→draw ping-pong of
 a single dominant task.
 
 ## 4. Component map
@@ -206,7 +206,7 @@ Read this next to the source; the largest file (stack.py) is ~310 lines.
 | File | Responsibility | Notes |
 |------|----------------|-------|
 | `config.py` | all settings, from environment variables | a `.env` file sourced by the launcher; no config framework |
-| `stack.py` | the engine: capture / pop / park / complete / move / list / health | pure file manipulation + the weight function; fully unit-tested; **knows nothing about MCP** |
+| `stack.py` | the engine: capture / draw / park / complete / move / list / health | pure file manipulation + the weight function; fully unit-tested; **knows nothing about MCP** |
 | `grounding.py` | task → search terms (wikilinks first, then tags, then title words) → hits across **all configured vaults** (`POPSTACK_VAULTS`), each tagged with its vault, merged with Zotero; flags concepts hitting 2+ vaults as **cross-vault connection candidates** (FR-7 substrate) | `ripgrep --json` when installed, pure-python fallback; returns structured hits — the *model* writes the prose brief |
 | `zotero.py` | paper library client | reads via Zotero's local HTTP API; writes (add-by-DOI) via the zotero.org web API using Crossref metadata |
 | `anki.py` | flashcard client (AnkiConnect, the standard Anki automation add-on) | absent Anki ⇒ `{available: false, error: how-to-fix}`, never an exception |
@@ -260,7 +260,7 @@ logic of its own.
 | Anki not installed | `anki_*` tools return setup instructions; never raise |
 | Vault path misconfigured | Stack dirs get created at the wrong path and searches return nothing — symptom is obvious; fix `.env` |
 | Sync conflict on a task file | only the server writes task files in practice; Obsidian merges bodies; frontmatter is last-writer-wins (accepted, PRD R-3) |
-| Active pool empty / everything cooling down | pop returns a structured error saying to promote from the reservoir or wait out cooldowns |
+| Active pool empty / everything cooling down | a draw returns a structured error saying to promote from the reservoir or wait out cooldowns |
 
 ## 8. Testing
 
@@ -272,12 +272,12 @@ logic of its own.
   the documented smoke test; unit-mocking them would mostly test the mocks.
   Revisit if logic accumulates there.
 - Smoke checklist (README): 29 tools registered; HTTP auth 401/200; full
-  capture → pop → park → Today.md flow.
+  capture → draw → park → Today.md flow.
 
 ## 9. Future work
 
-**P1:** scheduling (launchd), Funnel runbook, weight tuning from real pops.
+**P1:** scheduling (launchd), Funnel runbook, weight tuning from real draws.
 **P2:** recall drills — likely a `drill.py` that picks a random vault note
-or Zotero item plus an MCP prompt template; a `stats` tool (pop/park/done
+or Zotero item plus an MCP prompt template; a `stats` tool (draw/park/done
 counts are already derivable from frontmatter). **P3:** the app — an Agent
 SDK backend reusing `stack.py` unchanged (the §4 seam exists for this).

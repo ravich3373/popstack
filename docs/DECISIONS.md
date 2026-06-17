@@ -27,7 +27,7 @@ scale), and the earlier Todoist-based plan is obsolete.
 
 ---
 
-## ADR-002 — Pops are *random samples*, not rankings
+## ADR-002 — Draws are *random samples*, not rankings
 **Status:** amended by ADR-009 (random demoted to a tie-breaker) · 2026-06-10
 
 **Context.** Deterministic "highest urgency first" re-serves the same task
@@ -35,11 +35,11 @@ right after you park it (loop-lock) and reintroduces the choose-or-rationalize
 step the PRD set out to remove. Pure LIFO buries old tasks (the failure mode
 of the abandoned xtask-cli); uniform random starves deadlines.
 
-**Decision.** Pop draws randomly with probability proportional to a weight.
+**Decision.** A draw samples randomly with probability proportional to a weight.
 
 **Consequences.** The "be handed a task" experience the PRD wants; urgent
 work dominates odds without monopoly. Cost: occasional low-urgency picks —
-mitigated by repick-always-allowed (the model never forces a pop on you).
+mitigated by repick-always-allowed (the model never forces a draw on you).
 
 ---
 
@@ -55,8 +55,8 @@ that stale tasks must surface *more*, bounded.
 age(≤2, /365d)`; park sets a 4 h default cooldown that excludes the task.
 
 **Consequences.** Defensible defaults instead of vibes; one familiar knob set
-to retune (PRD open question 1). Cooldown kills pop→park ping-pong. Cost:
-constants tuned for engineers' work backlogs — revisit after ~50 real pops.
+to retune (PRD open question 1). Cooldown kills draw→park ping-pong. Cost:
+constants tuned for engineers' work backlogs — revisit after ~50 real draws.
 
 ---
 
@@ -65,9 +65,9 @@ constants tuned for engineers' work backlogs — revisit after ~50 real pops.
 
 **Context.** The choice-overload literature (Scheibehenne 2010 vs Chernev
 2015) supports harm only under *large, similar, uncertain* option sets; a
-giant single stack also makes random pops feel arbitrary and untrustworthy.
+giant single stack also makes random draws feel arbitrary and untrustworthy.
 
-**Decision.** Pops draw only from a capped active pool; capture overflow and
+**Decision.** Draws come only from a capped active pool; capture overflow and
 "not now" live in a reservoir with explicit promote/shelve moves.
 
 **Consequences.** The draw pool stays meaningful (every member was admitted

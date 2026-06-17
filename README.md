@@ -37,7 +37,7 @@ operator-local — see `local/`, gitignored — not tracked in this repo.)
 
 ```
 <vault>/Stack/
-  active/      eligible for pops (capped, default 20)
+  active/      eligible to be drawn (capped, default 20)
   reservoir/   someday / not-now (capture overflow lands here)
   done/        completed history
   Today.md     generated glanceable view (popstack-today)
@@ -150,7 +150,7 @@ After `uv sync`, a quick end-to-end sanity check:
 
 - **Weighted sampling, not LIFO/uniform**: Taskwarrior's urgency model ported
   to sampling weights; aging escalates with a ceiling (their maintainers'
-  answer to staleness), cooldowns stop pop-park ping-pong.
+  answer to staleness), cooldowns stop draw-park ping-pong.
 - **Small active pool + reservoir**: choice-overload effects are conditional
   on large similar option sets — keep the draw pool small (Llama Life's
   "Not Now" precedent).
