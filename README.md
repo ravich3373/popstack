@@ -10,16 +10,19 @@ cross-vault connections.
 source → decompose → draw next step → ground → understand → retain (Anki) → connect → ingest
 ```
 
-The execution engine (drawing the next step, parking with an if-then next
-action, completion, the daily view) is built; decomposition, multi-vault
-grounding, retention, connections, and doc-ingestion are the P2–P5 roadmap.
+**Built and tested:** the execution engine (draw → park with an if-then next
+action → complete → daily view), **decomposition** into editable goal trees,
+**multi-vault grounding** (with cross-vault connection *candidates*), **Anki
+card creation**, **Zotero** search/add, **codebase** clone/map, and
+**note-writing** into the vault. **Still roadmap:** generative recall *drills*
+(P3), automatically *writing* the cross-vault links (P4), and authored-doc
+*ingestion* (P5) — plus phone access (designed, not built).
 
 > Was: a generic random "task stack" (v1). Pivoted to a learning agent once the
 > real purpose became clear — see [PRD](docs/PRD.md) and ADR-008. The engine
 > survives as one component.
 
-**Status:** the engine + P2 (decompose / goal trees / goal-aware draw) are
-**code-complete and tested.** Usable on the laptop once you register it with
+**Status:** usable on the laptop once you register it with
 Claude Code (see [Use from Claude Code](#use-from-claude-code-laptop-stdio));
 **phone access is designed, not built.** (Per-machine deployment state is
 operator-local — see `local/`, gitignored — not tracked in this repo.)

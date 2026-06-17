@@ -45,9 +45,9 @@ components around the existing engine:
         ▼  Ingestor: authored doc → atomic notes + MOC + cards, in your conventions ADR-013 (P5)
 ```
 
-Component status: **Engine, Decomposer, dep-aware draw, multi-vault Grounder**
-✅ (P1–P2, code-complete + tested) · **Retainer (Anki cards/drills) /
-convention-aware note writer** 🔜 P3 · **Connector** (cross-vault link
+Component status: **Engine, Decomposer, dep-aware draw, multi-vault Grounder,
+Anki card creation, Zotero, codebase clone/map, note-writing** ✅
+(code-complete + tested) · generative recall **drills** 🔜 P3 · **Connector** (cross-vault link
 *candidates* land today in grounding; *writing* the links 🔜) P4 · **Ingestor**
 🔜 P5. Each keeps the ADR-006 discipline: own the *loop/learning semantics*,
 delegate deep tools (FSRS to Anki, library to Zotero, rendering to Obsidian).
